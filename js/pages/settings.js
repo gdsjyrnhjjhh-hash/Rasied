@@ -60,15 +60,15 @@
         <p style="margin:8px 0 0">الوضع الحالي: <b>${DB.isDemo() ? "Demo (متصفح)" : "Supabase متصل"}</b></p>
       </div>
 
-      <div class="card stack">
+      ${DB.isDemo() ? html`<div class="card stack">
         <h3 style="margin-top:0">وضع Demo</h3>
         <button type="button" class="danger" id="reset">إعادة ضبط بيانات Demo</button>
-      </div>
+      </div>` : ""}
     </div>`;
 
-  function saveCompanyPatch(patch) {
+  async function saveCompanyPatch(patch) {
     try {
-      DB.saveCompany(patch);
+      await DB.saveCompany(patch);
       UI.toast("تم الحفظ");
     } catch (e) {
       UI.toast("تعذّر الحفظ", true);
@@ -89,7 +89,8 @@
       vat_rate: Number(document.getElementById("vat-rate").value) || 0,
     });
   };
-  document.getElementById("reset").onclick = function () {
+  var resetBtn = document.getElementById("reset");
+  if (resetBtn) resetBtn.onclick = function () {
     if (!confirm("مسح كل البيانات المحلية؟")) return;
     DB.resetDemo();
     UI.toast("تمت إعادة الضبط");

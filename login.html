@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#182763" />
+    <title>تسجيل الدخول — نظام الشركة التجارية</title>
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="auth-body">
+    <div class="auth-shell">
+      <aside class="auth-hero">
+        <div class="auth-brand"><span class="brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg></span><b>نظام الشركة التجارية</b></div>
+        <div class="auth-hero-body">
+          <h1>أدِر تجارتك بالكامل<br />من مكان واحد</h1>
+          <p>مبيعات ومشتريات ومخزون وخزائن وحسابات وتقارير — بيانات شركتك معزولة ومحمية بالكامل.</p>
+          <ul class="auth-points">
+            <li><i></i>فواتير بضريبة وطباعة احترافية</li>
+            <li><i></i>مخزون ومخازن وجرد وتحويلات</li>
+            <li><i></i>قيود يومية وميزان مراجعة تلقائي</li>
+            <li><i></i>حساب خاص بشركتك برقم هاتفك</li>
+          </ul>
+        </div>
+        <div class="auth-foot">© نظام التجارة · الإصدار 19</div>
+      </aside>
+
+      <main class="auth-main">
+        <div class="auth-card card">
+          <div class="seg auth-tabs" role="tablist">
+            <button type="button" role="tab" id="tab-login" class="on">تسجيل الدخول</button>
+            <button type="button" role="tab" id="tab-reg">حساب جديد</button>
+          </div>
+
+          <form id="form-login" class="stack" novalidate>
+            <div><h2 class="auth-h">أهلاً بعودتك 👋</h2><p class="muted" style="margin:4px 0 0">ادخل برقم هاتفك وكلمة المرور</p></div>
+            <div class="field"><label for="l-phone">رقم الهاتف</label><input id="l-phone" type="tel" inputmode="tel" dir="ltr" autocomplete="username" placeholder="مثال: 966501234567" required /></div>
+            <div class="field"><label for="l-pass">كلمة المرور</label><div class="pw"><input id="l-pass" type="password" dir="ltr" autocomplete="current-password" required /><button type="button" class="ghost pw-eye" data-eye="l-pass" aria-label="إظهار">👁</button></div></div>
+            <div class="auth-err" id="err-login" role="alert" hidden></div>
+            <button class="primary auth-submit" type="submit" id="btn-login">دخول</button>
+          </form>
+
+          <form id="form-reg" class="stack" novalidate hidden>
+            <div><h2 class="auth-h">إنشاء حساب جديد</h2><p class="muted" style="margin:4px 0 0">سيكون لشركتك حساب وبيانات خاصة بها</p></div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="field"><label for="r-name">اسمك</label><input id="r-name" autocomplete="name" required /></div>
+              <div class="field"><label for="r-co">اسم الشركة</label><input id="r-co" autocomplete="organization" required /></div>
+            </div>
+            <div class="field"><label for="r-phone">رقم الهاتف (يُستخدم لتسجيل الدخول)</label><input id="r-phone" type="tel" inputmode="tel" dir="ltr" autocomplete="username" placeholder="مع كود الدولة، مثال: 966501234567" required /></div>
+            <div class="field"><label for="r-pass">كلمة المرور (6 أحرف على الأقل)</label><div class="pw"><input id="r-pass" type="password" dir="ltr" autocomplete="new-password" minlength="6" required /><button type="button" class="ghost pw-eye" data-eye="r-pass" aria-label="إظهار">👁</button></div></div>
+            <div class="auth-err" id="err-reg" role="alert" hidden></div>
+            <button class="primary auth-submit" type="submit" id="btn-reg">إنشاء الحساب</button>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/login.js"></script>
+  </body>
+</html>

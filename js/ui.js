@@ -85,6 +85,8 @@
     close: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
     calendar: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
     download: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>'),
+    admin: svg('<path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/>'),
+    logout: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>'),
     receipt: svg('<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2z"/><path d="M8 8h8M8 12h8"/>'),
   };
   var NAV_ICONS = ICON;
@@ -136,9 +138,11 @@
     { group: "التقارير", items: [{ key: "reports", href: "reports.html", label: "التقارير المالية" }] },
     { group: "النظام", items: [{ key: "settings", href: "settings.html", label: "الإعدادات" }] },
   ];
+  var NAV_ADMIN = { group: "الإدارة", items: [{ key: "admin", href: "admin.html", label: "إدارة المستخدمين" }] };
 
   var TITLES = {
     dashboard: ["لوحة التحكم", "ملخص المبيعات والمشتريات والمخزون"],
+    admin: ["إدارة المستخدمين", "المسجّلون · الاستخدام · بيانات الشركات · الإيقاف والتفعيل"],
     sales: ["فواتير البيع", "إنشاء ومتابعة فواتير العملاء + ضريبة + طباعة"],
     returns: ["مردودات البيع", "إرجاع بضاعة من العملاء"],
     "purchase-returns": ["مردودات الشراء", "إرجاع بضاعة للموردين"],
@@ -231,6 +235,27 @@
       return null;
     }
 
+    // السحابة: التحقق من الجلسة والملف الشخصي
+    var prof = null;
+    try { prof = await DB.ready(); } catch (e) {
+      app.innerHTML = html`<div class="login-wrap"><div class="card error">تعذّر الاتصال بالخادم: ${e.message || e}</div></div>`;
+      return null;
+    }
+    if (prof && prof.status === "suspended") {
+      app.innerHTML = html`<div class="login-wrap"><div class="card suspended-card">
+        <div class="susp-ic">${ICON.alert}</div>
+        <h2>الحساب موقوف</h2>
+        <p class="muted">تم إيقاف هذا الحساب مؤقتاً. لتفعيل النظام تواصل مع الإدارة.</p>
+        ${prof.status_note ? html`<div class="susp-note">${prof.status_note}</div>` : ""}
+        <button type="button" class="primary" id="susp-out">${ICON.logout}تسجيل الخروج</button>
+      </div></div>`;
+      document.getElementById("susp-out").onclick = function () { DB.logout(); };
+      return null;
+    }
+    var isAdmin = !!(prof && prof.role === "admin");
+    var NAVX = isAdmin ? NAV.concat([NAV_ADMIN]) : NAV;
+    if (active === "admin" && !isAdmin) { location.replace("index.html"); return null; }
+
     // ثيم محفوظ
     try {
       var savedTheme = localStorage.getItem("trading_theme");
@@ -245,13 +270,13 @@
 
     var title = TITLES[active] || [active, ""];
     var crumbGroup = "";
-    NAV.forEach(function (g) {
+    NAVX.forEach(function (g) {
       g.items.forEach(function (l) {
         if (l.key === active) crumbGroup = g.group;
       });
     });
 
-    var navHtml = NAV.map(function (g) {
+    var navHtml = NAVX.map(function (g) {
       return html`<div class="nav-group"><span>${g.group}</span></div>${g.items.map(function (l) {
         var ic = NAV_ICONS[l.key] || "•";
         return html`<a class="nav ${l.key === active ? "active" : ""}" href="${l.href}" data-nav="${l.key}" data-label="${l.label}"${l.key === active ? ' aria-current="page"' : ""}>
@@ -288,7 +313,7 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtml}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 18</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 19</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>
@@ -318,7 +343,8 @@
               </div>
               ${DB.isDemo() ? html`<span class="badge demo">Demo</span>` : html`<span class="badge ok">Live</span>`}
               <div class="muted clock" id="clock"></div>
-              <div class="user-chip"><div class="av">${(companyBrand || "م").trim().charAt(0)}</div><div class="un">المدير العام<small>مسؤول النظام</small></div></div>
+              <div class="user-chip"><div class="av">${((prof && prof.full_name) || companyBrand || "م").trim().charAt(0)}</div><div class="un">${prof ? prof.full_name : "المدير العام"}<small>${prof ? (isAdmin ? "مدير النظام" : "مستخدم") : "وضع تجريبي"}</small></div></div>
+              ${prof ? html`<button type="button" class="ghost" data-action="logout" title="تسجيل الخروج">${ICON.logout}</button>` : ""}
             </div>
           </header>
           <main class="content anim-stagger" id="page"></main>
@@ -387,7 +413,7 @@
 
     // لوحة الأوامر Ctrl+K
     var allPages = [];
-    NAV.forEach(function (g) {
+    NAVX.forEach(function (g) {
       g.items.forEach(function (l) {
         allPages.push({ key: l.key, href: l.href, label: l.label, group: g.group, icon: NAV_ICONS[l.key] || "•" });
       });
@@ -482,6 +508,8 @@
         UI.toast(document.documentElement.classList.contains("dark") ? "الوضع الداكن" : "الوضع الفاتح");
       } else if (act === "focus-search" || act === "open-cmd") {
         openCmd();
+      } else if (act === "logout") {
+        DB.logout();
       } else if (act === "toggle-quick") {
         var menu = document.getElementById("quick-menu");
         menu.hidden = !menu.hidden;

@@ -181,6 +181,72 @@
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
 
+  // ======================================================================
+  // وضع السحابة (Supabase): كل شركة معزولة عبر RLS، والبيانات في جدول records
+  // ======================================================================
+  var profile = null, companyRow = null, readyPromise = null;
+
+  function goLogin() {
+    var here = (location.pathname.split("/").pop() || "index.html");
+    if (here !== "login.html") location.replace("login.html");
+  }
+
+  async function ensureSeed() {
+    // شركة جديدة: دليل حسابات أساسي + مخزن + خزينة (مرة واحدة)
+    var c = await client.from("records").select("id", { count: "exact", head: true })
+      .eq("company_id", profile.company_id).eq("tbl", "accounts");
+    if (c.error || c.count > 0) return;
+    var now = new Date().toISOString();
+    var rows = SEED.accounts.map(function (a) {
+      return { company_id: profile.company_id, id: a.id, tbl: "accounts", data: Object.assign({}, a, { created_at: now }), created_at: now };
+    });
+    rows.push({ company_id: profile.company_id, id: uid(), tbl: "warehouses", data: { name: "المخزن الرئيسي", location: "", created_at: now }, created_at: now });
+    rows.push({ company_id: profile.company_id, id: uid(), tbl: "cash_registers", data: { name: "الخزينة الرئيسية", balance: 0, location: "", created_at: now }, created_at: now });
+    rows.forEach(function (r) { r.data.id = r.id; });
+    await client.from("records").insert(rows);
+  }
+
+  // يُستدعى من UI.init: يتحقق من الجلسة ويحمّل الملف الشخصي والشركة
+  function ready() {
+    if (demoMode) return Promise.resolve(null);
+    if (readyPromise) return readyPromise;
+    readyPromise = (async function () {
+      var s = await client.auth.getSession();
+      if (!s.data.session) { goLogin(); return new Promise(function () {}); }
+      var uidv = s.data.session.user.id;
+      var pr = await client.from("profiles").select("*").eq("id", uidv).maybeSingle();
+      if (pr.error || !pr.data) { await client.auth.signOut(); goLogin(); return new Promise(function () {}); }
+      profile = pr.data;
+      var co = await client.from("companies").select("*").eq("id", profile.company_id).maybeSingle();
+      companyRow = co.data || { name: "", profile: {} };
+      if (profile.status === "active") {
+        await ensureSeed();
+        client.rpc("heartbeat");
+      }
+      return profile;
+    })();
+    return readyPromise;
+  }
+
+  async function logout() {
+    if (client) await client.auth.signOut();
+    location.replace("login.html");
+  }
+
+  async function cloudList(table) {
+    var out = [], from = 0, step = 1000;
+    for (;;) {
+      var r = await client.from("records").select("id,data,created_at")
+        .eq("company_id", profile.company_id).eq("tbl", table)
+        .order("created_at", { ascending: false }).range(from, from + step - 1);
+      if (r.error) throw new Error(r.error.message);
+      r.data.forEach(function (x) { out.push(Object.assign({}, x.data, { id: x.id, created_at: x.created_at })); });
+      if (r.data.length < step) break;
+      from += step;
+    }
+    return out;
+  }
+
   async function list(table) {
     if (fatal) throw new Error(fatal);
     if (demoMode) {
@@ -189,9 +255,8 @@
         return (b.created_at || b.date || "").localeCompare(a.created_at || a.date || "");
       });
     }
-    var res = await client.from(table).select("*").order("created_at", { ascending: false });
-    if (res.error) throw new Error(res.error.message);
-    return res.data || [];
+    await ready();
+    return cloudList(table);
   }
 
   async function get(table, id) {
@@ -209,9 +274,12 @@
       saveDemo(d);
       return item;
     }
-    var res = await client.from(table).insert(item).select().single();
+    await ready();
+    var res = await client.from("records").insert({
+      company_id: profile.company_id, id: item.id, tbl: table, data: item, created_at: item.created_at,
+    });
     if (res.error) throw new Error(res.error.message);
-    return res.data;
+    return item;
   }
 
   async function update(table, id, patch) {
@@ -225,9 +293,13 @@
       saveDemo(d);
       return arr[i];
     }
-    var res = await client.from(table).update(patch).eq("id", id).select().single();
+    await ready();
+    var cur = await client.from("records").select("data").eq("company_id", profile.company_id).eq("id", id).maybeSingle();
+    if (cur.error || !cur.data) throw new Error("السجل غير موجود");
+    var merged = Object.assign({}, cur.data.data, patch);
+    var res = await client.from("records").update({ data: merged }).eq("company_id", profile.company_id).eq("id", id);
     if (res.error) throw new Error(res.error.message);
-    return res.data;
+    return merged;
   }
 
   async function remove(table, id) {
@@ -238,7 +310,8 @@
       saveDemo(d);
       return true;
     }
-    var res = await client.from(table).delete().eq("id", id);
+    await ready();
+    var res = await client.from("records").delete().eq("company_id", profile.company_id).eq("id", id);
     if (res.error) throw new Error(res.error.message);
     return true;
   }
@@ -250,9 +323,13 @@
 
   function isDemo() { return demoMode; }
 
-  // بيانات الشركة والضريبة (تُحفظ في نفس مفتاح Demo الموحّد)
+  // بيانات الشركة والضريبة
   function getCompany() {
     var base = Object.assign({}, SEED.company);
+    if (!demoMode) {
+      if (companyRow) base = Object.assign(base, companyRow.profile || {}, { name: companyRow.name });
+      return base;
+    }
     try {
       var raw = localStorage.getItem(LS_KEY);
       var d = raw ? JSON.parse(raw) : null;
@@ -265,6 +342,17 @@
     return base;
   }
   function saveCompany(patch) {
+    if (!demoMode) {
+      var merged = Object.assign({}, companyRow.profile || {}, patch);
+      delete merged.name;
+      var upd = { profile: merged };
+      if (patch.name) upd.name = patch.name;
+      return client.from("companies").update(upd).eq("id", profile.company_id).select().single().then(function (r) {
+        if (r.error) throw new Error(r.error.message);
+        companyRow = r.data;
+        return getCompany();
+      });
+    }
     var d = loadDemo();
     d.company = Object.assign({}, SEED.company, d.company || {}, patch);
     d.settings = Object.assign({}, d.settings || {}, {
@@ -272,7 +360,7 @@
       vat_enabled: d.company.vat_enabled,
     });
     saveDemo(d);
-    return d.company;
+    return Promise.resolve(d.company);
   }
 
   // ترقيم تلقائي
@@ -295,6 +383,10 @@
     remove: remove,
     uid: uid,
     isDemo: isDemo,
+    ready: ready,
+    logout: logout,
+    profile: function () { return profile; },
+    client: function () { return client; },
     getCompany: getCompany,
     saveCompany: saveCompany,
     resetDemo: resetDemo,

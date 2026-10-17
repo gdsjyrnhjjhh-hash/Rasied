@@ -1,3 +1,4 @@
+-- [قديم — غير مستخدم] استُبدل بـ 20261017000002_multitenant_auth_admin.sql (جدول records المعزول لكل شركة)
 -- Trading System core schema (Supabase)
 -- شغّل من SQL Editor عند الربط الفعلي
 
