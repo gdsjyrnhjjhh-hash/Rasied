@@ -250,6 +250,31 @@
 
   function isDemo() { return demoMode; }
 
+  // بيانات الشركة والضريبة (تُحفظ في نفس مفتاح Demo الموحّد)
+  function getCompany() {
+    var base = Object.assign({}, SEED.company);
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      var d = raw ? JSON.parse(raw) : null;
+      if (d && d.company) base = Object.assign(base, d.company);
+      if (d && d.settings) {
+        if (d.settings.vat_rate != null) base.vat_rate = d.settings.vat_rate;
+        if (d.settings.vat_enabled != null) base.vat_enabled = d.settings.vat_enabled;
+      }
+    } catch (e) {}
+    return base;
+  }
+  function saveCompany(patch) {
+    var d = loadDemo();
+    d.company = Object.assign({}, SEED.company, d.company || {}, patch);
+    d.settings = Object.assign({}, d.settings || {}, {
+      vat_rate: d.company.vat_rate,
+      vat_enabled: d.company.vat_enabled,
+    });
+    saveDemo(d);
+    return d.company;
+  }
+
   // ترقيم تلقائي
   async function nextNumber(table, field) {
     field = field || "number";
@@ -270,6 +295,8 @@
     remove: remove,
     uid: uid,
     isDemo: isDemo,
+    getCompany: getCompany,
+    saveCompany: saveCompany,
     resetDemo: resetDemo,
     nextNumber: nextNumber,
     fatal: fatal,

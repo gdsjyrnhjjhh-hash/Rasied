@@ -6,17 +6,10 @@
   var vatRate = 14, vatEnabled = true, company = { name: "شركة النور للتجارة", phone: "", address: "", tax_id: "" };
 
   function loadCompany() {
-    try {
-      var demo = localStorage.getItem("trading_demo_v3") || localStorage.getItem("trading_demo_v2");
-      if (demo) {
-        var parsed = JSON.parse(demo);
-        if (parsed.company) {
-          company = Object.assign(company, parsed.company);
-          if (parsed.company.vat_rate != null) vatRate = Number(parsed.company.vat_rate) || 14;
-          if (parsed.company.vat_enabled != null) vatEnabled = !!parsed.company.vat_enabled;
-        }
-      }
-    } catch (e) {}
+    var c = DB.getCompany();
+    company = Object.assign(company, c);
+    if (c.vat_rate != null) vatRate = Number(c.vat_rate) || 0;
+    if (c.vat_enabled != null) vatEnabled = c.vat_enabled !== false;
   }
 
   page.innerHTML = html`

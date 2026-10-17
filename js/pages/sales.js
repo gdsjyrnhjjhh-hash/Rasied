@@ -29,21 +29,10 @@
   }
 
   function loadCompany() {
-    try {
-      var demo = localStorage.getItem("trading_demo_v2");
-      if (demo) {
-        var parsed = JSON.parse(demo);
-        if (parsed.company) {
-          company = Object.assign(company, parsed.company);
-          if (parsed.company.vat_rate != null) vatRate = Number(parsed.company.vat_rate) || 14;
-          if (parsed.company.vat_enabled != null) vatEnabled = !!parsed.company.vat_enabled;
-        }
-        if (parsed.settings) {
-          if (parsed.settings.vat_rate != null) vatRate = Number(parsed.settings.vat_rate) || vatRate;
-          if (parsed.settings.vat_enabled != null) vatEnabled = parsed.settings.vat_enabled !== false;
-        }
-      }
-    } catch (e) {}
+    var c = DB.getCompany();
+    company = Object.assign(company, c);
+    if (c.vat_rate != null) vatRate = Number(c.vat_rate) || 0;
+    if (c.vat_enabled != null) vatEnabled = c.vat_enabled !== false;
   }
 
   function renderList() {

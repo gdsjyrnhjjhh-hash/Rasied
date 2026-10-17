@@ -12,13 +12,7 @@
     vat_enabled: true,
   };
 
-  try {
-    var raw = localStorage.getItem("trading_demo_v2");
-    if (raw) {
-      var d = JSON.parse(raw);
-      if (d.company) company = Object.assign(company, d.company);
-    }
-  } catch (e) {}
+  company = Object.assign(company, DB.getCompany());
 
   page.innerHTML = html`
     <div class="stack">
@@ -74,14 +68,7 @@
 
   function saveCompanyPatch(patch) {
     try {
-      var raw = localStorage.getItem("trading_demo_v2");
-      var d = raw ? JSON.parse(raw) : {};
-      d.company = Object.assign({}, d.company || company, patch);
-      d.settings = Object.assign({}, d.settings || {}, {
-        vat_rate: d.company.vat_rate,
-        vat_enabled: d.company.vat_enabled,
-      });
-      localStorage.setItem("trading_demo_v2", JSON.stringify(d));
+      DB.saveCompany(patch);
       UI.toast("تم الحفظ");
     } catch (e) {
       UI.toast("تعذّر الحفظ", true);

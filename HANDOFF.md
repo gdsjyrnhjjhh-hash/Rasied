@@ -1,5 +1,5 @@
 # HANDOFF — نظام الشركة التجارية (Trading ERP)
-**الإصدار الحالي: v16**  
+**الإصدار الحالي: v18**  
 **التاريخ المرجعي: 2026-10-17**
 
 > الصق في أي محادثة جديدة:
@@ -11,7 +11,7 @@
 | العنصر | المسار |
 |--------|--------|
 | المشروع | `/home/workdir/artifacts/trading-system/` |
-| آخر ZIP | `/home/workdir/artifacts/trading-system-v16-full.zip` |
+| آخر ZIP | `/home/workdir/artifacts/trading-system-v18-full.zip` |
 | نسخة HANDOFF | `trading-system/HANDOFF.md` + `TRADING-SYSTEM-HANDOFF.md` |
 | ورشة (منفصل) | `workshop-system/` + `workshop-system-garage-v014.zip` |
 
@@ -90,11 +90,13 @@ cd trading-system && python3 -m http.server 8000
 - **v14: هوية الشركة في السايدبار من الإعدادات + نسخة ERP في التذييل + توحيد عناوين الصفحات + empty-pro**
 - **v15: ثيم محاسبي — أزرق gradient · رمادي · أحمر · أبيض (بدل التركواز)**
 - **v16: إصلاح السايدبار — position fixed لا تتحرك مع التمرير + تصميم داكن نظيف محاسبي**
+- **v17: حركة هادئة (إلغاء الميل 3D) + نظام تصميم مبسّط**
+- **v18: نظام تصميم "Ledger" — سايدبار/شريط علوي جديد + بحث عام، لوحة تحكم بمخطط مساحي تفاعلي وSparklines وفترات 7/14/30، أرقام لاتينية موحّدة، حالات فارغة وتوست بأيقونات، قالب طباعة فواتير جديد، ثيم يتبع النظام. إصلاحات: صفحات دليل الحسابات/المصروفات/المخازن كانت ملفاتها ناقصة وأُعيد بناؤها؛ الإعدادات كانت تحفظ في مفتاح قديم (v2) فأصبحت تمر عبر DB.getCompany/saveCompany**
 
 ## 11) جملة النسخ للمحادثة الجديدة
 ```
-أكمل نظام الشركة التجارية من HANDOFF v16
+أكمل نظام الشركة التجارية من HANDOFF v18
 المسار: /home/workdir/artifacts/trading-system/
-آخر حزمة: trading-system-v16-full.zip
+آخر حزمة: trading-system-v18-full.zip
 لا تعِد البناء من الصفر. اقرأ HANDOFF.md ونفّذ أولوية التطوير التالية التي أحددها.
 ```
