@@ -6,50 +6,13 @@
 
   page.innerHTML = html`
     <div class="stack">
-      <div class="row between wrap gap">
-        <h2 class="page-title" style="margin:0">المصروفات</h2>
-        <button type="button" class="primary" id="btn-add">+ مصروف</button>
+      <div class="page-toolbar">
+        <div>
+          <h2 style="margin:0">المصروفات</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:12px">مصروفات تشغيلية</p>
+        </div>
       </div>
-      <div class="card table-wrap" id="list"></div>
-    </div>`;
 
-  function accName(id) {
-    var a = accounts.filter(function (x) { return x.id === id; })[0];
-    return a ? a.name : "—";
-  }
-
-  function render() {
-    var total = expenses.reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0);
-    document.getElementById("list").innerHTML = html`
-      <p style="margin:0 0 12px">إجمالي المصروفات: <b class="accent">${money(total)}</b></p>
-      <table>
-        <thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>المبلغ</th><th>الطريقة</th><th></th></tr></thead>
-        <tbody>
-          ${expenses.length === 0 ? html`<tr><td colspan="6" class="empty">لا توجد مصروفات</td></tr>` :
-            expenses.map(function (e) {
-              return html`<tr>
-                <td dir="ltr">${e.date || ""}</td>
-                <td>${e.description || ""}</td>
-                <td>${accName(e.account_id)}</td>
-                <td><b>${money(e.amount)}</b></td>
-                <td>${e.method === "cash" ? "نقدي" : "بنك"}</td>
-                <td><button class="small danger" data-id="${e.id}" data-act="del">حذف</button></td>
-              </tr>`;
-            }).join("")}
-        </tbody>
-      </table>`;
-  }
-
-  function openForm() {
-    var expAccounts = accounts.filter(function (a) { return a.type === "expense"; });
-    if (!expAccounts.length) expAccounts = accounts;
-    var ov = document.createElement("div");
-    ov.className = "modal-overlay";
-    ov.innerHTML = html`<div class="modal card">
-      <h3 style="margin-top:0">تسجيل مصروف</h3>
-      <form id="f" class="stack">
-        <div class="form-grid">
-          <div class="field"><label>البيان</label><input id="desc" required></div>
           <div class="field"><label>المبلغ</label><input id="amount" type="number" step="0.01" required min="0.01"></div>
           <div class="field"><label>حساب المصروف</label>
             <select id="acc">${expAccounts.map(function (a) {

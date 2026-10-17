@@ -1,5 +1,5 @@
 # HANDOFF — نظام الشركة التجارية (Trading ERP)
-**الإصدار الحالي: v13**  
+**الإصدار الحالي: v16**  
 **التاريخ المرجعي: 2026-10-17**
 
 > الصق في أي محادثة جديدة:
@@ -11,7 +11,7 @@
 | العنصر | المسار |
 |--------|--------|
 | المشروع | `/home/workdir/artifacts/trading-system/` |
-| آخر ZIP | `/home/workdir/artifacts/trading-system-v13-full.zip` |
+| آخر ZIP | `/home/workdir/artifacts/trading-system-v16-full.zip` |
 | نسخة HANDOFF | `trading-system/HANDOFF.md` + `TRADING-SYSTEM-HANDOFF.md` |
 | ورشة (منفصل) | `workshop-system/` + `workshop-system-garage-v014.zip` |
 
@@ -87,11 +87,14 @@ cd trading-system && python3 -m http.server 8000
 - **v11: js/motion.js — ميل 3D يتبع الماوس + glare + أزرار مغناطيسية + MutationObserver لإعادة الربط**
 - **v12: إحصائيات أعلى الصفحات (مبيعات/عملاء/موردين/أصناف) + توحيد page-toolbar + لمسات CSS**
 - **v13: إحصائيات المشتريات + تنبيه صفوف المخزون المنخفض + شريط نشاط في لوحة التحكم**
+- **v14: هوية الشركة في السايدبار من الإعدادات + نسخة ERP في التذييل + توحيد عناوين الصفحات + empty-pro**
+- **v15: ثيم محاسبي — أزرق gradient · رمادي · أحمر · أبيض (بدل التركواز)**
+- **v16: إصلاح السايدبار — position fixed لا تتحرك مع التمرير + تصميم داكن نظيف محاسبي**
 
 ## 11) جملة النسخ للمحادثة الجديدة
 ```
-أكمل نظام الشركة التجارية من HANDOFF v13
+أكمل نظام الشركة التجارية من HANDOFF v16
 المسار: /home/workdir/artifacts/trading-system/
-آخر حزمة: trading-system-v13-full.zip
+آخر حزمة: trading-system-v16-full.zip
 لا تعِد البناء من الصفر. اقرأ HANDOFF.md ونفّذ أولوية التطوير التالية التي أحددها.
 ```

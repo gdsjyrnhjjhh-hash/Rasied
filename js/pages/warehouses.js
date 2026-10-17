@@ -6,45 +6,13 @@
 
   page.innerHTML = html`
     <div class="stack">
-      <div class="row between wrap gap">
-        <h2 class="page-title" style="margin:0">المخازن</h2>
-        <button type="button" class="primary" id="btn-add">+ مخزن جديد</button>
+      <div class="page-toolbar">
+        <div>
+          <h2 style="margin:0">المخازن</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:12px">مواقع التخزين</p>
+        </div>
       </div>
-      <div class="card table-wrap" id="list"></div>
-    </div>`;
 
-  function render() {
-    document.getElementById("list").innerHTML = html`
-      <table>
-        <thead><tr><th>المخزن</th><th>الموقع</th><th>عدد الأصناف</th><th></th></tr></thead>
-        <tbody>
-          ${warehouses.length === 0 ? html`<tr><td colspan="4" class="empty">لا توجد مخازن</td></tr>` :
-            warehouses.map(function (w) {
-              var cnt = products.filter(function (p) { return p.warehouse_id === w.id; }).length;
-              return html`<tr>
-                <td><b>${w.name}</b></td>
-                <td>${w.location || "—"}</td>
-                <td>${cnt}</td>
-                <td>
-                  <button class="small" data-id="${w.id}" data-act="edit">تعديل</button>
-                  <button class="small danger" data-id="${w.id}" data-act="del">حذف</button>
-                </td>
-              </tr>`;
-            }).join("")}
-        </tbody>
-      </table>`;
-  }
-
-  function openForm(w) {
-    var isNew = !w;
-    w = w || { name: "", location: "" };
-    var ov = document.createElement("div");
-    ov.className = "modal-overlay";
-    ov.innerHTML = html`<div class="modal card">
-      <h3 style="margin-top:0">${isNew ? "مخزن جديد" : "تعديل مخزن"}</h3>
-      <form id="f" class="stack">
-        <div class="form-grid">
-          <div class="field"><label>الاسم</label><input id="name" required value="${w.name || ""}"></div>
           <div class="field"><label>الموقع</label><input id="loc" value="${w.location || ""}"></div>
         </div>
         <div class="row gap" style="justify-content:flex-end">

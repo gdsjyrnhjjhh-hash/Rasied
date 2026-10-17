@@ -6,65 +6,13 @@
 
   page.innerHTML = html`
     <div class="stack">
-      <div class="row between wrap gap">
-        <h2 class="page-title" style="margin:0">قيود اليومية</h2>
-        <button type="button" class="primary" id="btn-add">+ قيد يدوي</button>
-      </div>
-      <div class="card table-wrap" id="list"></div>
-      <div id="detail"></div>
-    </div>`;
-
-  function accName(id) {
-    var a = accounts.filter(function (x) { return x.id === id; })[0];
-    return a ? (a.code + " — " + a.name) : id;
-  }
-
-  function renderList() {
-    document.getElementById("list").innerHTML = html`
-      <table class="clickable">
-        <thead><tr><th>رقم</th><th>التاريخ</th><th>البيان</th><th>المصدر</th></tr></thead>
-        <tbody>
-          ${entries.length === 0 ? html`<tr><td colspan="4" class="empty">لا توجد قيود</td></tr>` :
-            entries.map(function (e) {
-              return html`<tr data-id="${e.id}">
-                <td><b>#${e.number}</b></td>
-                <td dir="ltr">${e.date || ""}</td>
-                <td>${e.memo || ""}</td>
-                <td class="muted">${e.source || "يدوي"}</td>
-              </tr>`;
-            }).join("")}
-        </tbody>
-      </table>`;
-  }
-
-  function showDetail(id) {
-    var e = entries.filter(function (x) { return x.id === id; })[0];
-    if (!e) { document.getElementById("detail").innerHTML = ""; return; }
-    var jl = lines.filter(function (l) { return l.entry_id === id; });
-    var td = jl.reduce(function (s, l) { return s + (Number(l.debit) || 0); }, 0);
-    var tc = jl.reduce(function (s, l) { return s + (Number(l.credit) || 0); }, 0);
-    document.getElementById("detail").innerHTML = html`
-      <div class="card stack">
-        <h3 style="margin:0">قيد #${e.number} — ${e.memo || ""}</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>
-            <tbody>
-              ${jl.map(function (l) {
-                return html`<tr>
-                  <td>${accName(l.account_id)}</td>
-                  <td>${l.debit ? money(l.debit) : ""}</td>
-                  <td>${l.credit ? money(l.credit) : ""}</td>
-                </tr>`;
-              }).join("")}
-              <tr>
-                <td><b>الإجمالي</b></td>
-                <td><b>${money(td)}</b></td>
-                <td><b>${money(tc)}</b></td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="page-toolbar">
+        <div>
+          <h2 style="margin:0">القيود اليومية</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:12px">دفتر اليومية · الترحيل المحاسبي</p>
         </div>
+      </div>
+
         ${Math.abs(td - tc) > 0.01 ? html`<p class="badge err">القيد غير متوازن!</p>` : html`<p class="badge ok">القيد متوازن</p>`}
       </div>`;
   }

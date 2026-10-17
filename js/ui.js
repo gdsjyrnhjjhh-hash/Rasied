@@ -187,6 +187,17 @@
       else document.documentElement.classList.remove("dark");
     } catch (e) {}
 
+    var companyBrand = "نظام التجارة";
+    var companySub = DB.isDemo() ? "وضع تجريبي" : "متصل";
+    try {
+      var raw = localStorage.getItem("trading_demo_v3") || localStorage.getItem("trading_demo_v2");
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed.company && parsed.company.name) companyBrand = parsed.company.name;
+      }
+    } catch (e) {}
+    if (!DB.isDemo()) companySub = "سحابة · متصل";
+
     var title = TITLES[active] || [active, ""];
     var crumbGroup = "";
     NAV.forEach(function (g) {
@@ -219,8 +230,8 @@
           <div class="brand">
             <div class="brand-icon">🏢</div>
             <div>
-              <b>نظام التجارة</b>
-              <span>${DB.isDemo() ? "وضع تجريبي" : "متصل"}</span>
+              <b>${companyBrand}</b>
+              <span>${companySub}</span>
             </div>
           </div>
           <div class="sidebar-search-wrap">
@@ -228,7 +239,8 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtml}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-hint">Ctrl + K للبحث السريع</div>
+            <div class="sidebar-hint">Ctrl + K بحث سريع</div>
+            <div class="sidebar-ver">ERP v14 · عربي</div>
           </div>
         </aside>
         <div class="main">
