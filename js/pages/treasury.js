@@ -153,18 +153,29 @@
     return '<option value="">— بدون —</option>' + tabs.filter(function (t) { return (t.kind === "private") === (kind === "private"); })
       .map(function (t) { return '<option value="' + t.id + '"' + (t.id === sel ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("");
   }
+  function newId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  // يبني قيد الحركة (3 صفوف) جاهزًا للإدخال الجماعي؛ يُرجع {id, rows}
+  function moveJournalRows(jn, kind, amount, date, regName) {
+    var id = newId();
+    return { id: id, rows: [
+      { table: "journal_entries", row: { id: id, number: jn, date: date, memo: (kind === "in" ? "وارد خزينة: " : "منصرف خزينة: ") + regName, source: "cash" } },
+      { table: "journal_lines", row: { entry_id: id, account_id: kind === "in" ? "a1" : "a10", debit: amount, credit: 0 } },
+      { table: "journal_lines", row: { entry_id: id, account_id: kind === "in" ? "a7" : "a1", debit: 0, credit: amount } },
+    ] };
+  }
   async function postMoveJournal(kind, amount, date, regName) {
     var jn = await DB.nextNumber("journal_entries");
-    var e = await DB.insert("journal_entries", { number: jn, date: date, memo: (kind === "in" ? "وارد خزينة: " : "منصرف خزينة: ") + regName, source: "cash" });
-    await DB.insert("journal_lines", { entry_id: e.id, account_id: kind === "in" ? "a1" : "a10", debit: amount, credit: 0 });
-    await DB.insert("journal_lines", { entry_id: e.id, account_id: kind === "in" ? "a7" : "a1", debit: 0, credit: amount });
-    return e.id;
+    var j = moveJournalRows(jn, kind, amount, date, regName);
+    await DB.insertRows(j.rows);
+    return j.id;
   }
   async function dropJournal(id) {
     if (!id) return;
-    var ls = (await DB.list("journal_lines")).filter(function (l) { return l.entry_id === id; });
-    for (var i = 0; i < ls.length; i++) await DB.remove("journal_lines", ls[i].id);
-    await DB.remove("journal_entries", id);
+    var ls = await DB.listWhere("journal_lines", "entry_id", id);
+    await Promise.all([DB.removeMany("journal_lines", ls.map(function (l) { return l.id; })), DB.remove("journal_entries", id)]);
   }
 
   function openMove(m) {
@@ -185,7 +196,7 @@
       else {
         var k = val("m-kind"), amt = N(val("m-amount")), date = val("m-date");
         if (amt <= 0) throw new Error("المبلغ غير صحيح");
-        var r = await DB.get("cash_registers", reg.id);
+        var r = await DB.get("cash_registers", reg.id, { fresh: true });
         if (edit) {
           var base = N(r.balance) - (isPlus(m) ? 1 : -1) * N(m.amount), nb = base + (k === "in" ? 1 : -1) * amt;
           if (nb < -0.004) throw new Error("الرصيد غير كافٍ لهذا التعديل");
@@ -208,18 +219,24 @@
     if (locked(m)) { UI.toast("حركة مرتبطة بمستند — احذف المستند الأصلي", true); return; }
     var msg = isTransfer(m) ? "حذف التحويل سيحذف الحركتين في الخزينتين. متابعة؟" : "حذف الحركة #" + m._n + "؟";
     if (!confirm(msg)) return;
-    var all = await DB.list("cash_movements");
-    var targets = isTransfer(m) && m.grp ? all.filter(function (x) { return x.grp === m.grp; }) : [m];
-    // التحقق من عدم سالب الرصيد
+    var targets = isTransfer(m) && m.grp ? await DB.listWhere("cash_movements", "grp", m.grp) : [m];
+    // التحقق من عدم سالب الرصيد (قراءة الخزائن المعنية بالتوازي)
+    var rids = [];
+    targets.forEach(function (t) { if (rids.indexOf(t.register_id) < 0) rids.push(t.register_id); });
+    var got = await Promise.all(rids.map(function (id) { return DB.get("cash_registers", id, { fresh: true }); }));
     var regs = {};
+    rids.forEach(function (id, i) { if (got[i]) regs[id] = got[i]; });
     for (var i = 0; i < targets.length; i++) {
-      var t = targets[i], r = regs[t.register_id] || (regs[t.register_id] = await DB.get("cash_registers", t.register_id));
+      var t = targets[i], r = regs[t.register_id];
       if (!r) continue;
       r.balance = N(r.balance) - (isPlus(t) ? 1 : -1) * N(t.amount);
       if (r.balance < -0.004) { UI.toast("الحذف يجعل رصيد الخزينة سالبًا", true); return; }
     }
-    for (var k in regs) if (regs[k]) await DB.update("cash_registers", k, { balance: regs[k].balance });
-    for (var j = 0; j < targets.length; j++) { await dropJournal(targets[j].jid); await DB.remove("cash_movements", targets[j].id); }
+    var jobs = [];
+    Object.keys(regs).forEach(function (k) { jobs.push(DB.update("cash_registers", k, { balance: regs[k].balance })); });
+    targets.forEach(function (t) { jobs.push(dropJournal(t.jid)); });
+    jobs.push(DB.removeMany("cash_movements", targets.map(function (t) { return t.id; })));
+    await Promise.all(jobs);
     UI.toast("تم الحذف"); await load();
   }
 
@@ -346,14 +363,28 @@
     var rd = new FileReader();
     rd.onload = async function () {
       try {
-        var lines = String(rd.result).replace(/^﻿/, "").split(/\r?\n/).filter(function (l) { return l.trim(); }).slice(1), n = 0;
-        // الأعمدة: التاريخ، البيان، وارد، صادر
-        for (var i = 0; i < lines.length; i++) {
-          var c = lines[i].split(","), date = (c[0] || "").trim() || today, notes = (c[1] || "").trim(), inc = N(c[2]), out = N(c[3]);
-          if (inc > 0) { await Ledger.treasuryMove({ register_id: reg.id, type: "in", amount: inc, date: date, notes: notes }); n++; }
-          else if (out > 0) { await Ledger.treasuryMove({ register_id: reg.id, type: "out", amount: out, date: date, notes: notes }); n++; }
+        var lines = String(rd.result).replace(/^﻿/, "").split(/\r?\n/).filter(function (l) { return l.trim(); }).slice(1);
+        // الأعمدة: التاريخ، البيان، وارد، صادر — كل الحركات في طلب واحد ورصيد الخزينة يُحدَّث مرة واحدة
+        var cur = await Promise.all([DB.get("cash_registers", reg.id, { fresh: true }), DB.listWhere("cash_movements", "register_id", reg.id)]);
+        var r0 = cur[0]; if (!r0) throw new Error("الخزينة غير موجودة");
+        var seq = 0;
+        cur[1].forEach(function (m) { if (N(m.seq) > seq) seq = N(m.seq); });
+        if (!seq) seq = cur[1].length;
+        var rows = [], delta = 0;
+        lines.forEach(function (ln) {
+          var c = ln.split(","), date = (c[0] || "").trim() || today, notes = (c[1] || "").trim(), inc = N(c[2]), out = N(c[3]);
+          var k = inc > 0 ? "in" : (out > 0 ? "out" : ""); if (!k) return;
+          var amt = k === "in" ? inc : out;
+          seq++; delta += k === "in" ? amt : -amt;
+          rows.push({ table: "cash_movements", row: {
+            seq: seq, ref: "", ptab_id: "", register_id: reg.id, type: k, kind: k, amount: amt, date: date, notes: notes, tab_id: "",
+            party_type: "", party_id: "", grp: "", counterpart: "" } });
+        });
+        if (rows.length) {
+          await DB.insertRows(rows);
+          await DB.update("cash_registers", reg.id, { balance: N(r0.balance) + delta });
         }
-        UI.toast("تم استيراد " + n + " حركة"); await load();
+        UI.toast("تم استيراد " + rows.length + " حركة"); await load();
       } catch (err) { UI.toast(err.message || "تعذّر الاستيراد", true); }
     };
     rd.readAsText(file); e.target.value = "";

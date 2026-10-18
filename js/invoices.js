@@ -50,44 +50,58 @@
     return K.sign > 0 ? N(doc.total) - N(doc.paid) : -N(doc.total);
   }
 
-  async function postJournal(date, memo, source, docId, rows) {
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  // يبني قيدًا (رأس + سطور) كصفوف جاهزة؛ number = رقم القيد. يُرجع [] لو لا مبالغ.
+  function buildJournal(number, date, memo, source, docId, rows) {
     rows = rows.filter(function (r) { return N(r[1]) > 0.004 || N(r[2]) > 0.004; });
-    if (!rows.length) return;
-    var number = await DB.nextNumber("journal_entries");
-    var e = await DB.insert("journal_entries", { number: number, date: date, memo: memo, source: source, source_id: docId });
-    for (var i = 0; i < rows.length; i++) {
-      await DB.insert("journal_lines", { entry_id: e.id, account_id: rows[i][0], debit: r2(N(rows[i][1])), credit: r2(N(rows[i][2])) });
-    }
+    if (!rows.length) return [];
+    var eid = uid();
+    var out = [{ table: "journal_entries", row: { id: eid, number: number, date: date, memo: memo, source: source, source_id: docId } }];
+    rows.forEach(function (r) {
+      out.push({ table: "journal_lines", row: { entry_id: eid, account_id: r[0], debit: r2(N(r[1])), credit: r2(N(r[2])) } });
+    });
+    return out;
   }
 
   // عكس كل أثر المستند (مخزون، قيود، دفعات، حركة خزينة، رصيد الطرف) ثم حذف بنوده
+  // القراءات بالتوازي بفلترة على السيرفر، والكتابات بالتوازي على صفوف مختلفة (لا تعارض بينها)
   async function reverse(kind, doc) {
     var K = KINDS[kind];
-    var old = (await DB.list(K.lines)).filter(function (l) { return l[K.fk] === doc.id; });
-    for (var i = 0; i < old.length; i++) {
-      var p = await DB.get("products", old[i].product_id);
-      if (p) await DB.update("products", p.id, { qty: N(p.qty) - K.stock * N(old[i].qty) });
-      await DB.remove(K.lines, old[i].id);
-    }
-    var entries = (await DB.list("journal_entries")).filter(function (e) { return e.source_id === doc.id; });
-    if (entries.length) {
-      var ids = {}; entries.forEach(function (e) { ids[e.id] = 1; });
-      var jl = (await DB.list("journal_lines")).filter(function (l) { return ids[l.entry_id]; });
-      for (var j = 0; j < jl.length; j++) await DB.remove("journal_lines", jl[j].id);
-      for (var k = 0; k < entries.length; k++) await DB.remove("journal_entries", entries[k].id);
-    }
-    var pays = (await DB.list("payments")).filter(function (p) { return p.ref === doc.id; });
-    for (var m = 0; m < pays.length; m++) await DB.remove("payments", pays[m].id);
-    if (doc.pay_move_id) {
-      var mv = await DB.get("cash_movements", doc.pay_move_id);
-      if (mv) {
-        var reg = await DB.get("cash_registers", mv.register_id);
-        if (reg) await DB.update("cash_registers", reg.id, { balance: N(reg.balance) - (mv.kind === "in" ? 1 : -1) * N(mv.amount) });
-        await DB.remove("cash_movements", mv.id);
-      }
-    }
-    var party = await DB.get(K.party, doc[K.pkey]);
-    if (party) await DB.update(K.party, party.id, { balance: N(party.balance) - effect(kind, doc) });
+    var r = await Promise.all([
+      DB.listWhere(K.lines, K.fk, doc.id),
+      DB.listWhere("journal_entries", "source_id", doc.id),
+      DB.listWhere("payments", "ref", doc.id),
+      doc.pay_move_id ? DB.get("cash_movements", doc.pay_move_id, { fresh: true }) : null,
+      DB.get(K.party, doc[K.pkey], { fresh: true }),
+    ]);
+    var old = r[0], entries = r[1], pays = r[2], mv = r[3], party = r[4];
+
+    var byProd = {};
+    old.forEach(function (l) { byProd[l.product_id] = (byProd[l.product_id] || 0) + N(l.qty); });
+    var pids = Object.keys(byProd);
+    var r2s = await Promise.all([
+      Promise.all(pids.map(function (id) { return DB.get("products", id, { fresh: true }); })),
+      entries.length ? DB.listWhereIn("journal_lines", "entry_id", entries.map(function (e) { return e.id; })) : [],
+      mv ? DB.get("cash_registers", mv.register_id, { fresh: true }) : null,
+    ]);
+    var prods = r2s[0], jl = r2s[1], reg = r2s[2];
+    var ids = function (arr) { return arr.map(function (x) { return x.id; }); };
+
+    var jobs = [];
+    prods.forEach(function (p, i) {
+      if (p) jobs.push(DB.update("products", p.id, { qty: N(p.qty) - K.stock * byProd[pids[i]] }));
+    });
+    if (mv && reg) jobs.push(DB.update("cash_registers", reg.id, { balance: N(reg.balance) - (mv.kind === "in" ? 1 : -1) * N(mv.amount) }));
+    if (party) jobs.push(DB.update(K.party, party.id, { balance: N(party.balance) - effect(kind, doc) }));
+    jobs.push(DB.removeMany(K.lines, ids(old)));
+    jobs.push(DB.removeMany("journal_lines", ids(jl)));
+    jobs.push(DB.removeMany("journal_entries", ids(entries)));
+    jobs.push(DB.removeMany("payments", ids(pays)));
+    if (mv) jobs.push(DB.removeMany("cash_movements", [mv.id]));
+    await Promise.all(jobs);
   }
 
   // d: {party_id, date, book_no, rep_id, location, delivery, discount, paid, register_id, notes, vat_rate, lines:[{product_id, qty, price, unit, note}]}
@@ -101,84 +115,94 @@
 
     // التحقق من رصيد الخزينة (سداد مورد) قبل أي تغيير
     if (kind === "purchase" && c.paid > 0 && d.register_id) {
-      var rg = await DB.get("cash_registers", d.register_id);
+      var rg = await DB.get("cash_registers", d.register_id, { fresh: true });
       var avail = rg ? N(rg.balance) : 0;
       if (existing && existing.pay_move_id && existing.register_id === d.register_id) avail += N(existing.paid);
       if (c.paid > avail + 0.004) throw new Error("رصيد الخزينة غير كافٍ للسداد");
     }
 
     if (existing) await reverse(kind, existing);
-    var number = existing ? existing.number : await DB.nextNumber(K.seq);
+
+    // بعد العكس: قراءة طازجة (بالتوازي) للأصناف والطرف ورقم المستند ورقم القيد
+    var pids = []; d.lines.forEach(function (l) { if (pids.indexOf(l.product_id) < 0) pids.push(l.product_id); });
+    var pre = await Promise.all([
+      Promise.all(pids.map(function (id) { return DB.get("products", id, { fresh: true }); })),
+      DB.get(K.party, d.party_id, { fresh: true }),
+      existing ? existing.number : DB.nextNumber(K.seq),
+      DB.nextNumber("journal_entries"),
+    ]);
+    var prodMap = {}; pre[0].forEach(function (p, i) { if (p) prodMap[pids[i]] = p; });
+    var party = pre[1], number = pre[2], jn = pre[3];
+
+    var docId = existing ? existing.id : uid();
+    var payMoveId = (K.paidable && c.paid > 0 && d.register_id) ? uid() : "";
     var header = {
       number: number, date: d.date, status: "posted",
       gross: c.gross, discount: c.discount, subtotal: c.subtotal, vat_rate: c.vat_rate, vat_amount: c.vat, delivery: c.delivery, total: c.total, paid: c.paid,
-      book_no: d.book_no || "", rep_id: d.rep_id || "", location: d.location || "", notes: d.notes || "", register_id: d.register_id || "", pay_move_id: "",
+      book_no: d.book_no || "", rep_id: d.rep_id || "", location: d.location || "", notes: d.notes || "", register_id: d.register_id || "", pay_move_id: payMoveId,
     };
     header[K.pkey] = d.party_id;
-    var docId;
-    if (existing) { await DB.update(K.table, existing.id, header); docId = existing.id; }
-    else { docId = (await DB.insert(K.table, header)).id; }
 
-    var cogs = 0;
-    for (var i = 0; i < d.lines.length; i++) {
-      var l = d.lines[i];
-      var prod = await DB.get("products", l.product_id);
+    // بنود المستند + تجميع تغيّر المخزون لكل صنف + التكلفة
+    var rows = [], cogs = 0, qtyDelta = {}, lastCost = {};
+    d.lines.forEach(function (l) {
+      var prod = prodMap[l.product_id];
       var cost = prod ? N(prod.cost) : 0;
       var rec = { product_id: l.product_id, qty: N(l.qty), unit: l.unit || "", note: l.note || "" };
       rec[K.fk] = docId; rec[K.price] = N(l.price);
       if (kind === "sale") rec.cost = cost;
-      await DB.insert(K.lines, rec);
+      rows.push({ table: K.lines, row: rec });
       if (prod) {
-        var patch = { qty: N(prod.qty) + K.stock * N(l.qty) };
-        if (kind === "purchase") patch.cost = N(l.price);
-        await DB.update("products", prod.id, patch);
+        qtyDelta[l.product_id] = (qtyDelta[l.product_id] || 0) + K.stock * N(l.qty);
+        if (kind === "purchase") lastCost[l.product_id] = N(l.price);
       }
       cogs += cost * N(l.qty);
-    }
+    });
     cogs = r2(cogs);
+    if (!existing) rows.unshift({ table: K.table, row: Object.assign({ id: docId }, header) });
 
-    var party = await DB.get(K.party, d.party_id);
     var label = K.title + " #" + number;
-    if (kind === "sale") {
-      await postJournal(d.date, "قيد " + label, "sale", docId, [["a3", c.total, 0], ["a7", 0, c.subtotal + c.delivery], ["a5b", 0, c.vat], ["a9", cogs, 0], ["a4", 0, cogs]]);
-    } else if (kind === "purchase") {
-      await postJournal(d.date, "قيد " + label, "purchase", docId, [["a4", c.subtotal + c.delivery, 0], ["a12", c.vat, 0], ["a5", 0, c.total]]);
-    } else if (kind === "sale_return") {
-      await postJournal(d.date, "قيد " + label, "sale_return", docId, [["a8", c.total, 0], ["a3", 0, c.total], ["a4", cogs, 0], ["a9", 0, cogs]]);
-    } else {
-      await postJournal(d.date, "قيد " + label, "purchase_return", docId, [["a5", c.total, 0], ["a4", 0, c.total]]);
-    }
+    var j1;
+    if (kind === "sale") j1 = [["a3", c.total, 0], ["a7", 0, c.subtotal + c.delivery], ["a5b", 0, c.vat], ["a9", cogs, 0], ["a4", 0, cogs]];
+    else if (kind === "purchase") j1 = [["a4", c.subtotal + c.delivery, 0], ["a12", c.vat, 0], ["a5", 0, c.total]];
+    else if (kind === "sale_return") j1 = [["a8", c.total, 0], ["a3", 0, c.total], ["a4", cogs, 0], ["a9", 0, cogs]];
+    else j1 = [["a5", c.total, 0], ["a4", 0, c.total]];
+    var jr = buildJournal(jn, d.date, "قيد " + label, kind, docId, j1);
+    rows = rows.concat(jr);
+    if (jr.length) jn++;
 
-    var payMoveId = "";
+    var isSale = kind === "sale";
     if (K.paidable && c.paid > 0) {
-      var isSale = kind === "sale";
-      await DB.insert("payments", {
+      rows.push({ table: "payments", row: {
         kind: isSale ? "receipt" : "payment", party_type: K.ptype, party_id: d.party_id, amount: c.paid, method: d.register_id ? "cash" : "bank",
         register_id: d.register_id || "", date: d.date, ref: docId, notes: (isSale ? "دفعة على فاتورة " : "سداد فاتورة ") + number,
-      });
-      if (d.register_id) {
-        var mv = await Ledger.treasuryMove({
-          register_id: d.register_id, type: isSale ? "in" : "out", amount: c.paid, date: d.date, ref: docId,
-          party_type: K.ptype, party_id: d.party_id, notes: (isSale ? "تحصيل فاتورة بيع " : "سداد فاتورة شراء ") + number + " — " + (party ? party.name : ""),
-        });
-        payMoveId = mv.id;
-      }
-      await postJournal(d.date, (isSale ? "تحصيل " : "سداد ") + label, isSale ? "receipt" : "payment", docId,
-        isSale ? [["a1", c.paid, 0], ["a3", 0, c.paid]] : [["a5", c.paid, 0], ["a1", 0, c.paid]]);
+      } });
+      rows = rows.concat(buildJournal(jn, d.date, (isSale ? "تحصيل " : "سداد ") + label, isSale ? "receipt" : "payment", docId,
+        isSale ? [["a1", c.paid, 0], ["a3", 0, c.paid]] : [["a5", c.paid, 0], ["a1", 0, c.paid]]));
     }
-    if (payMoveId) await DB.update(K.table, docId, { pay_move_id: payMoveId });
 
-    if (party) {
-      var fresh = await DB.get(K.party, party.id);
-      var tmp = { total: c.total, paid: c.paid };
-      await DB.update(K.party, party.id, { balance: N(fresh.balance) + effect(kind, tmp) });
+    // كل الإدخالات في طلب واحد، والتحديثات على صفوف مختلفة بالتوازي
+    var jobs = [DB.insertRows(rows)];
+    if (existing) jobs.push(DB.update(K.table, docId, header));
+    Object.keys(qtyDelta).forEach(function (pid) {
+      var patch = { qty: N(prodMap[pid].qty) + qtyDelta[pid] };
+      if (pid in lastCost) patch.cost = lastCost[pid];
+      jobs.push(DB.update("products", pid, patch));
+    });
+    if (payMoveId) {
+      jobs.push(Ledger.treasuryMove({
+        id: payMoveId, register_id: d.register_id, type: isSale ? "in" : "out", amount: c.paid, date: d.date, ref: docId,
+        party_type: K.ptype, party_id: d.party_id, notes: (isSale ? "تحصيل فاتورة بيع " : "سداد فاتورة شراء ") + number + " — " + (party ? party.name : ""),
+      }));
     }
+    if (party) jobs.push(DB.update(K.party, party.id, { balance: N(party.balance) + effect(kind, { total: c.total, paid: c.paid }) }));
+    await Promise.all(jobs);
     return { id: docId, number: number, total: c.total };
   }
 
   async function remove(kind, id) {
     var K = KINDS[kind];
-    var doc = await DB.get(K.table, id);
+    var doc = await DB.get(K.table, id, { fresh: true });
     if (!doc) throw new Error("المستند غير موجود");
     await reverse(kind, doc);
     await DB.remove(K.table, id);
@@ -186,10 +210,9 @@
 
   async function load(kind, id) {
     var K = KINDS[kind];
-    var doc = await DB.get(K.table, id);
-    if (!doc) return null;
-    var lines = (await DB.list(K.lines)).filter(function (l) { return l[K.fk] === id; });
-    return { doc: doc, lines: lines };
+    var r = await Promise.all([DB.get(K.table, id), DB.listWhere(K.lines, K.fk, id)]);
+    if (!r[0]) return null;
+    return { doc: r[0], lines: r[1] };
   }
 
   /* ---------- نص الطباعة ---------- */

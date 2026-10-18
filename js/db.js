@@ -239,20 +239,63 @@
     location.replace("login.html");
   }
 
-  async function cloudList(table) {
-    var out = [], from = 0, step = 1000;
-    for (;;) {
-      var r = await client.from("records").select("id,data,created_at")
-        .eq("company_id", profile.company_id).eq("tbl", table)
-        .order("created_at", { ascending: false }).range(from, from + step - 1);
-      if (r.error) throw new Error(r.error.message);
-      r.data.forEach(function (x) { out.push(Object.assign({}, x.data, { id: x.id, created_at: x.created_at })); });
-      if (r.data.length < step) break;
-      from += step;
-    }
-    return out;
+  // ----------------------------------------------------------------------
+  // كاش خفيف داخل الصفحة الواحدة + تقليل عدد الطلبات (الصفحات مستقلة، فالكاش يُمسح بالتنقّل)
+  //  - list: يجلب الصفحات الزائدة عن 1000 بالتوازي ويمنع الطلب المكرر لنفس الجدول
+  //  - get: طلب صف واحد بدل تحميل الجدول كله
+  //  - listWhere/listWhereIn: فلترة على السيرفر بدل جلب الجدول ثم الفلترة
+  //  - insertRows/insertMany/removeMany: طلب واحد لعدة صفوف
+  // ----------------------------------------------------------------------
+  var cache = {}, inflight = {}, TTL = 20000;
+  function cFresh(t) { var c = cache[t]; return c && (Date.now() - c.t) < TTL ? c : null; }
+  function cPut(t, rows) { cache[t] = { t: Date.now(), rows: rows }; }
+  function cAdd(t, item) { var c = cache[t]; if (c) c.rows.unshift(item); }
+  function cSet(t, id, row) {
+    var c = cache[t]; if (!c) return;
+    for (var i = 0; i < c.rows.length; i++) if (c.rows[i].id === id) { c.rows[i] = row; return; }
   }
+  function cDel(t, ids) {
+    var c = cache[t]; if (!c) return;
+    var m = {}; ids.forEach(function (i) { m[i] = 1; });
+    c.rows = c.rows.filter(function (r) { return !m[r.id]; });
+  }
+  function toRow(x) { return Object.assign({}, x.data, { id: x.id, created_at: x.created_at }); }
+  function base(table) {
+    return client.from("records").select("id,data,created_at").eq("company_id", profile.company_id).eq("tbl", table);
+  }
+  function quoteIn(v) { return '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'; }
 
+  async function cloudList(table) {
+    var c = cFresh(table);
+    if (c) return c.rows.slice();
+    if (!inflight[table]) {
+      inflight[table] = (async function () {
+        var step = 1000;
+        var first = await client.from("records").select("id,data,created_at", { count: "exact" })
+          .eq("company_id", profile.company_id).eq("tbl", table)
+          .order("created_at", { ascending: false }).range(0, step - 1);
+        if (first.error) throw new Error(first.error.message);
+        var out = first.data.map(toRow);
+        var total = first.count || out.length;
+        if (total > step) {
+          var jobs = [];
+          for (var from = step; from < total; from += step) {
+            jobs.push(base(table).order("created_at", { ascending: false }).range(from, from + step - 1));
+          }
+          var rest = await Promise.all(jobs);
+          rest.forEach(function (r) {
+            if (r.error) throw new Error(r.error.message);
+            r.data.forEach(function (x) { out.push(toRow(x)); });
+          });
+        }
+        cPut(table, out);
+        return out;
+      })();
+    }
+    var p = inflight[table];
+    try { return (await p).slice(); }
+    finally { if (inflight[table] === p) delete inflight[table]; }
+  }
   async function list(table) {
     if (fatal) throw new Error(fatal);
     if (demoMode) {
@@ -264,30 +307,102 @@
     await ready();
     return cloudList(table);
   }
-
-  async function get(table, id) {
-    var rows = await list(table);
-    return rows.filter(function (r) { return r.id === id; })[0] || null;
-  }
-
-  async function insert(table, row) {
+  // صف واحد. opts.fresh = تجاهل الكاش (للأرصدة)
+  async function get(table, id, opts) {
     if (fatal) throw new Error(fatal);
-    var item = Object.assign({ id: uid(), created_at: new Date().toISOString() }, row);
+    if (!id) return null;
     if (demoMode) {
-      var d = loadDemo();
-      if (!d[table]) d[table] = [];
-      d[table].push(item);
-      saveDemo(d);
-      return item;
+      var rows = await list(table);
+      return rows.filter(function (r) { return r.id === id; })[0] || null;
     }
     await ready();
-    var res = await client.from("records").insert({
-      company_id: profile.company_id, id: item.id, tbl: table, data: item, created_at: item.created_at,
-    });
-    if (res.error) throw new Error(res.error.message);
-    return item;
+    if (!(opts && opts.fresh)) {
+      var c = cFresh(table);
+      if (c) {
+        for (var i = 0; i < c.rows.length; i++) if (c.rows[i].id === id) return c.rows[i];
+      }
+    }
+    var r = await base(table).eq("id", id).maybeSingle();
+    if (r.error) throw new Error(r.error.message);
+    return r.data ? toRow(r.data) : null;
   }
-
+  // فلترة على السيرفر: كل الصفوف التي data[field] == value
+  async function listWhere(table, field, value) {
+    if (fatal) throw new Error(fatal);
+    if (demoMode) {
+      return (await list(table)).filter(function (r) { return String(r[field]) === String(value); });
+    }
+    await ready();
+    var c = cFresh(table);
+    if (c) return c.rows.filter(function (r) { return String(r[field]) === String(value); });
+    var out = [], from = 0, step = 1000;
+    for (;;) {
+      var r = await base(table).eq("data->>" + field, String(value)).range(from, from + step - 1);
+      if (r.error) throw new Error(r.error.message);
+      r.data.forEach(function (x) { out.push(toRow(x)); });
+      if (r.data.length < step) break;
+      from += step;
+    }
+    return out;
+  }
+  async function listWhereIn(table, field, values) {
+    values = (values || []).filter(function (v) { return v != null && v !== ""; });
+    if (!values.length) return [];
+    if (demoMode) {
+      var set = {}; values.forEach(function (v) { set[String(v)] = 1; });
+      return (await list(table)).filter(function (r) { return set[String(r[field])]; });
+    }
+    await ready();
+    var c = cFresh(table);
+    if (c) {
+      var m = {}; values.forEach(function (v) { m[String(v)] = 1; });
+      return c.rows.filter(function (r) { return m[String(r[field])]; });
+    }
+    var chunks = [];
+    for (var i = 0; i < values.length; i += 100) chunks.push(values.slice(i, i + 100));
+    var res = await Promise.all(chunks.map(function (ch) {
+      return base(table).in("data->>" + field, ch.map(quoteIn));
+    }));
+    var out = [];
+    res.forEach(function (r) {
+      if (r.error) throw new Error(r.error.message);
+      r.data.forEach(function (x) { out.push(toRow(x)); });
+    });
+    return out;
+  }
+  function mkItem(row) { return Object.assign({ id: uid(), created_at: new Date().toISOString() }, row); }
+  async function insert(table, row) {
+    var out = await insertRows([{ table: table, row: row }]);
+    return out[0];
+  }
+  // عدة صفوف (قد تكون من جداول مختلفة) في طلب واحد: [{table,row}]
+  async function insertRows(items) {
+    if (fatal) throw new Error(fatal);
+    if (!items.length) return [];
+    var made = items.map(function (x) { return { table: x.table, item: mkItem(x.row) }; });
+    if (demoMode) {
+      var d = loadDemo();
+      made.forEach(function (m) {
+        if (!d[m.table]) d[m.table] = [];
+        d[m.table].push(m.item);
+      });
+      saveDemo(d);
+      return made.map(function (m) { return m.item; });
+    }
+    await ready();
+    for (var i = 0; i < made.length; i += 500) {
+      var part = made.slice(i, i + 500).map(function (m) {
+        return { company_id: profile.company_id, id: m.item.id, tbl: m.table, data: m.item, created_at: m.item.created_at };
+      });
+      var res = await client.from("records").insert(part);
+      if (res.error) throw new Error(res.error.message);
+    }
+    made.forEach(function (m) { cAdd(m.table, m.item); });
+    return made.map(function (m) { return m.item; });
+  }
+  async function insertMany(table, rows) {
+    return insertRows(rows.map(function (r) { return { table: table, row: r }; }));
+  }
   async function update(table, id, patch) {
     if (fatal) throw new Error(fatal);
     if (demoMode) {
@@ -300,28 +415,38 @@
       return arr[i];
     }
     await ready();
-    var cur = await client.from("records").select("data").eq("company_id", profile.company_id).eq("id", id).maybeSingle();
+    // قراءة صف واحد من السيرفر دائمًا (دمج آمن مع أي تعديل من جهاز آخر)
+    var cur = await client.from("records").select("data,created_at").eq("company_id", profile.company_id).eq("id", id).maybeSingle();
     if (cur.error || !cur.data) throw new Error("السجل غير موجود");
     var merged = Object.assign({}, cur.data.data, patch);
     var res = await client.from("records").update({ data: merged }).eq("company_id", profile.company_id).eq("id", id);
     if (res.error) throw new Error(res.error.message);
+    cSet(table, id, Object.assign({}, merged, { id: id, created_at: cur.data.created_at }));
     return merged;
   }
-
-  async function remove(table, id) {
+  async function remove(table, id) { return removeMany(table, [id]); }
+  async function removeMany(table, ids) {
     if (fatal) throw new Error(fatal);
+    ids = (ids || []).filter(Boolean);
+    if (!ids.length) return true;
     if (demoMode) {
       var d = loadDemo();
-      d[table] = (d[table] || []).filter(function (r) { return r.id !== id; });
+      var m = {}; ids.forEach(function (i) { m[i] = 1; });
+      d[table] = (d[table] || []).filter(function (r) { return !m[r.id]; });
       saveDemo(d);
       return true;
     }
     await ready();
-    var res = await client.from("records").delete().eq("company_id", profile.company_id).eq("id", id);
-    if (res.error) throw new Error(res.error.message);
+    var jobs = [];
+    for (var i = 0; i < ids.length; i += 100) {
+      jobs.push(client.from("records").delete().eq("company_id", profile.company_id).in("id", ids.slice(i, i + 100)));
+    }
+    var res = await Promise.all(jobs);
+    res.forEach(function (r) { if (r.error) throw new Error(r.error.message); });
+    cDel(table, ids);
     return true;
   }
-
+  function refresh(table) { if (table) delete cache[table]; else cache = {}; }
   function resetDemo() {
     localStorage.removeItem(LS_KEY);
     return loadDemo();
@@ -369,9 +494,23 @@
     return Promise.resolve(d.company);
   }
 
-  // ترقيم تلقائي
+  // ترقيم تلقائي: أكبر رقم + 1 (على السيرفر: صف واحد فقط بدل تحميل الجدول)
   async function nextNumber(table, field) {
     field = field || "number";
+    if (!demoMode && !fatal) {
+      try {
+        await ready();
+        var r = await client.from("records").select("data")
+          .eq("company_id", profile.company_id).eq("tbl", table)
+          .order("data->" + field, { ascending: false, nullsFirst: false }).limit(1);
+        if (!r.error) {
+          var top = r.data.length ? Number(r.data[0].data[field]) || 0 : 0;
+          var c = cFresh(table), cm = 0;
+          if (c) c.rows.forEach(function (x) { var n = Number(x[field]) || 0; if (n > cm) cm = n; });
+          return Math.max(top, cm) + 1;
+        }
+      } catch (e) { /* رجوع للطريقة العامة */ }
+    }
     var rows = await list(table);
     var max = 0;
     rows.forEach(function (r) {
@@ -380,7 +519,6 @@
     });
     return max + 1;
   }
-
   window.DB = {
     list: list,
     get: get,
@@ -397,6 +535,12 @@
     saveCompany: saveCompany,
     resetDemo: resetDemo,
     nextNumber: nextNumber,
+    listWhere: listWhere,
+    listWhereIn: listWhereIn,
+    insertRows: insertRows,
+    insertMany: insertMany,
+    removeMany: removeMany,
+    refresh: refresh,
     fatal: fatal,
     configured: configured,
   };

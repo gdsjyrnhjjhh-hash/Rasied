@@ -106,12 +106,16 @@
       var reg = registers.filter(function (r) { return r.id === id; })[0];
       if (kind === "out" && amount > (Number(reg.balance) || 0)) throw new Error("الرصيد غير كافٍ");
       var notes = val("notes").trim(), date = val("date");
-      await Ledger.treasuryMove({ register_id: id, type: kind, amount: amount, date: date, notes: notes, tab_id: val("tab") });
-      // قيد مبسط على الصندوق
+      var eid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       var jn = await DB.nextNumber("journal_entries");
-      var entry = await DB.insert("journal_entries", { number: jn, date: date, memo: (kind === "in" ? "وارد خزينة: " : "منصرف خزينة: ") + reg.name, source: "cash" });
-      await DB.insert("journal_lines", { entry_id: entry.id, account_id: kind === "in" ? "a1" : "a10", debit: amount, credit: 0 });
-      await DB.insert("journal_lines", { entry_id: entry.id, account_id: kind === "in" ? "a7" : "a1", debit: 0, credit: amount });
+      await Promise.all([
+        Ledger.treasuryMove({ register_id: id, type: kind, amount: amount, date: date, notes: notes, tab_id: val("tab") }),
+        DB.insertRows([
+          { table: "journal_entries", row: { id: eid, number: jn, date: date, memo: (kind === "in" ? "وارد خزينة: " : "منصرف خزينة: ") + reg.name, source: "cash" } },
+          { table: "journal_lines", row: { entry_id: eid, account_id: kind === "in" ? "a1" : "a10", debit: amount, credit: 0 } },
+          { table: "journal_lines", row: { entry_id: eid, account_id: kind === "in" ? "a7" : "a1", debit: 0, credit: amount } },
+        ]),
+      ]);
       UI.toast("تم ترحيل الحركة"); ov.remove(); await load();
     }, "ترحيل");
   }

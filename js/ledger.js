@@ -16,17 +16,18 @@
 
   /* ---------- كشف حساب طرف ---------- */
   // inc = يزيد الرصيد (مدين للعميل / دائن للمورد) ، dec = ينقصه
-  async function statement(type, id, from, to) {
+  // pre (اختياري): {party, docs, rets, pays, txns} محمّلة مسبقًا (تستعملها recomputeAll لتجنّب إعادة الجلب)
+  async function statement(type, id, from, to, pre) {
     var isC = type === "customer";
-    var d = await Promise.all([
+    var key = isC ? "customer_id" : "supplier_id";
+    var d = pre ? [pre.party, pre.docs, pre.rets, pre.pays, pre.txns] : await Promise.all([
       DB.get(isC ? "customers" : "suppliers", id),
-      DB.list(isC ? "sales" : "purchases"),
-      DB.list(isC ? "sale_returns" : "purchase_returns"),
-      DB.list("payments"),
-      DB.list("party_txns"),
+      DB.listWhere(isC ? "sales" : "purchases", key, id),
+      DB.listWhere(isC ? "sale_returns" : "purchase_returns", key, id),
+      DB.listWhere("payments", "party_id", id),
+      DB.listWhere("party_txns", "party_id", id),
     ]);
     var party = d[0] || {};
-    var key = isC ? "customer_id" : "supplier_id";
     var all = [];
     d[1].filter(function (r) { return r[key] === id && r.status !== "void"; }).forEach(function (r) {
       all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "sale" : "purchase", ref: r.number, desc: r.notes || "", inc: N(r.total), dec: 0 });
@@ -63,51 +64,83 @@
     return s.full;
   }
   async function recomputeAll(type) {
-    var list = await DB.list(type === "customer" ? "customers" : "suppliers");
-    for (var i = 0; i < list.length; i++) await recompute(type, list[i].id);
+    var isC = type === "customer", key = isC ? "customer_id" : "supplier_id";
+    var d = await Promise.all([
+      DB.list(isC ? "customers" : "suppliers"), DB.list(isC ? "sales" : "purchases"),
+      DB.list(isC ? "sale_returns" : "purchase_returns"), DB.list("payments"), DB.list("party_txns"),
+    ]);
+    var group = function (arr, f) { var m = {}; arr.forEach(function (r) { var k = f(r); (m[k] = m[k] || []).push(r); }); return m; };
+    var docs = group(d[1], function (r) { return r[key]; }), rets = group(d[2], function (r) { return r[key]; });
+    var pays = group(d[3], function (r) { return r.party_id; }), txns = group(d[4], function (r) { return r.party_id; });
+    var list = d[0];
+    for (var i = 0; i < list.length; i += 10) {
+      await Promise.all(list.slice(i, i + 10).map(async function (p) {
+        var s = await statement(type, p.id, null, null, { party: p, docs: docs[p.id] || [], rets: rets[p.id] || [], pays: pays[p.id] || [], txns: txns[p.id] || [] });
+        await DB.update(isC ? "customers" : "suppliers", p.id, { balance: s.full });
+      }));
+    }
     return list.length;
   }
 
+  function newId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
   async function journal(date, memo, source, dr, cr, amount) {
     var number = await DB.nextNumber("journal_entries");
-    var e = await DB.insert("journal_entries", { number: number, date: date, memo: memo, source: source });
-    await DB.insert("journal_lines", { entry_id: e.id, account_id: dr, debit: amount, credit: 0 });
-    await DB.insert("journal_lines", { entry_id: e.id, account_id: cr, debit: 0, credit: amount });
+    var eid = newId();
+    await DB.insertRows([
+      { table: "journal_entries", row: { id: eid, number: number, date: date, memo: memo, source: source } },
+      { table: "journal_lines", row: { entry_id: eid, account_id: dr, debit: amount, credit: 0 } },
+      { table: "journal_lines", row: { entry_id: eid, account_id: cr, debit: 0, credit: amount } },
+    ]);
   }
 
   /* ---------- حركة خزينة ---------- */
   // type: in | out | transfer_in | transfer_out | opening
   async function treasuryMove(o) {
-    var reg = await DB.get("cash_registers", o.register_id);
-    if (!reg) throw new Error("الخزينة غير موجودة");
     var sign = (o.type === "in" || o.type === "transfer_in" || o.type === "opening") ? 1 : -1;
     var amount = N(o.amount);
     if (amount <= 0) throw new Error("المبلغ غير صحيح");
-    var all = await DB.list("cash_movements");
+    // الخزينة (طازجة) وحركاتها فقط — بالتوازي — بدل تحميل حركات كل الخزائن
+    var r = await Promise.all([
+      DB.get("cash_registers", o.register_id, { fresh: true }),
+      DB.listWhere("cash_movements", "register_id", o.register_id),
+    ]);
+    var reg = r[0], mine = r[1];
+    if (!reg) throw new Error("الخزينة غير موجودة");
     var seq = 0;
-    all.forEach(function (m) { if (m.register_id === o.register_id && N(m.seq) > seq) seq = N(m.seq); });
-    if (!seq) seq = all.filter(function (m) { return m.register_id === o.register_id; }).length;
-    var rec = await DB.insert("cash_movements", {
+    mine.forEach(function (m) { if (N(m.seq) > seq) seq = N(m.seq); });
+    if (!seq) seq = mine.length;
+    var row = {
       seq: seq + 1, ref: o.ref || "", ptab_id: o.ptab_id || "",
       register_id: o.register_id, type: o.type, kind: sign > 0 ? "in" : "out", amount: amount,
       date: o.date || today(), notes: o.notes || "", tab_id: o.tab_id || "",
       party_type: o.party_type || "", party_id: o.party_id || "",
       grp: o.grp || "", counterpart: o.counterpart || "",
-    });
-    await DB.update("cash_registers", o.register_id, { balance: N(reg.balance) + sign * amount });
-    return rec;
+    };
+    if (o.id) row.id = o.id;
+    var out = await Promise.all([
+      DB.insert("cash_movements", row),
+      DB.update("cash_registers", o.register_id, { balance: N(reg.balance) + sign * amount }),
+    ]);
+    return out[0];
   }
 
   async function transfer(fromId, toId, amount, date, notes) {
     if (fromId === toId) throw new Error("اختر خزينتين مختلفتين");
-    var a = await DB.get("cash_registers", fromId), b = await DB.get("cash_registers", toId);
+    var r = await Promise.all([DB.get("cash_registers", fromId, { fresh: true }), DB.get("cash_registers", toId, { fresh: true })]);
+    var a = r[0], b = r[1];
     if (!a || !b) throw new Error("خزينة غير موجودة");
     if (N(amount) > N(a.balance)) throw new Error("رصيد الخزينة المحوَّل منها غير كافٍ");
     var grp = "tr" + Date.now().toString(36);
-    await treasuryMove({ register_id: fromId, type: "transfer_out", amount: amount, date: date, grp: grp, counterpart: toId,
-      notes: "تحويل إلى " + b.name + (notes ? " — " + notes : "") });
-    await treasuryMove({ register_id: toId, type: "transfer_in", amount: amount, date: date, grp: grp, counterpart: fromId,
-      notes: "تحويل من " + a.name + (notes ? " — " + notes : "") });
+    // الخزينتان مختلفتان فلا تعارض بين الحركتين
+    await Promise.all([
+      treasuryMove({ register_id: fromId, type: "transfer_out", amount: amount, date: date, grp: grp, counterpart: toId,
+        notes: "تحويل إلى " + b.name + (notes ? " — " + notes : "") }),
+      treasuryMove({ register_id: toId, type: "transfer_in", amount: amount, date: date, grp: grp, counterpart: fromId,
+        notes: "تحويل من " + a.name + (notes ? " — " + notes : "") }),
+    ]);
   }
 
   // رصيد سابق = الرصيد الحالي − صافي الحركات المسجلة (يحافظ على الأرصدة القديمة)
@@ -142,21 +175,22 @@
     var amount = N(o.amount);
     if (amount <= 0) throw new Error("المبلغ غير صحيح");
     var date = o.date || today();
-    var party = await DB.get(isC ? "customers" : "suppliers", o.party_id);
+    var party = await DB.get(isC ? "customers" : "suppliers", o.party_id, { fresh: true });
     if (!party) throw new Error("الطرف غير موجود");
-    await DB.insert("payments", {
+    var jobs = [DB.insert("payments", {
       kind: isC ? "receipt" : "payment", party_type: o.party_type, party_id: o.party_id, amount: amount,
       method: o.register_id ? "cash" : "bank", register_id: o.register_id || "", date: date, notes: o.notes || "",
-    });
+    })];
     if (o.register_id) {
-      await treasuryMove({
+      jobs.push(treasuryMove({
         register_id: o.register_id, type: isC ? "in" : "out", amount: amount, date: date, tab_id: o.tab_id,
         party_type: o.party_type, party_id: o.party_id,
         notes: (isC ? "تحصيل من " : "سداد إلى ") + party.name + (o.notes ? " — " + o.notes : ""),
-      });
+      }));
     }
-    if (isC) await journal(date, "تحصيل من " + party.name, "receipt", "a1", "a3", amount);
-    else await journal(date, "سداد إلى " + party.name, "payment", "a5", "a1", amount);
+    jobs.push(isC ? journal(date, "تحصيل من " + party.name, "receipt", "a1", "a3", amount)
+                  : journal(date, "سداد إلى " + party.name, "payment", "a5", "a1", amount));
+    await Promise.all(jobs);
     return recompute(o.party_type, o.party_id);
   }
 

@@ -104,59 +104,29 @@
       var method = document.getElementById("method").value;
       var date = document.getElementById("date").value;
       try {
-        await DB.insert("payments", {
-          kind: kind,
-          party_type: isReceipt ? "customer" : "supplier",
-          party_id: partyId,
-          amount: amount,
-          method: method,
-          register_id: regId,
-          date: date,
-          notes: document.getElementById("notes").value.trim(),
-        });
-
-        // تحديث رصيد الطرف
-        if (isReceipt) {
-          var c = customers.filter(function (x) { return x.id === partyId; })[0];
-          if (c) await DB.update("customers", c.id, { balance: Math.max(0, (Number(c.balance) || 0) - amount) });
-        } else {
-          var s = suppliers.filter(function (x) { return x.id === partyId; })[0];
-          if (s) await DB.update("suppliers", s.id, { balance: Math.max(0, (Number(s.balance) || 0) - amount) });
-        }
-
-        // تحديث الخزينة إن وُجدت
-        if (regId) {
-          var reg = registers.filter(function (x) { return x.id === regId; })[0];
-          if (reg) {
-            var bal = Number(reg.balance) || 0;
-            var newBal = isReceipt ? bal + amount : bal - amount;
-            if (!isReceipt && newBal < 0) { UI.toast("رصيد الخزينة غير كافٍ", true); return; }
-            await DB.update("cash_registers", regId, { balance: newBal });
-            await DB.insert("cash_movements", {
-              register_id: regId,
-              kind: isReceipt ? "in" : "out",
-              amount: amount,
-              date: date,
-              notes: (isReceipt ? "قبض: " : "صرف: ") + partyName({ party_type: isReceipt ? "customer" : "supplier", party_id: partyId }),
-            });
-          }
-        }
-
-        // قيود
+        // التحقق أولًا قبل أي كتابة (كان يُحفظ السند ثم يُرفض بسبب الرصيد)
+        var reg = regId ? await DB.get("cash_registers", regId, { fresh: true }) : null;
+        var newBal = reg ? (isReceipt ? 1 : -1) * amount + (Number(reg.balance) || 0) : 0;
+        if (reg && !isReceipt && newBal < 0) { UI.toast("رصيد الخزينة غير كافٍ", true); return; }
+        var ptype = isReceipt ? "customer" : "supplier";
+        var party = await DB.get(isReceipt ? "customers" : "suppliers", partyId, { fresh: true });
         var jn = await DB.nextNumber("journal_entries");
-        var entry = await DB.insert("journal_entries", {
-          number: jn, date: date,
-          memo: isReceipt ? "سند قبض" : "سند صرف",
-          source: "payment",
-        });
+        var eid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
         var cashAcc = method === "bank" ? "a2" : "a1";
-        if (isReceipt) {
-          await DB.insert("journal_lines", { entry_id: entry.id, account_id: cashAcc, debit: amount, credit: 0 });
-          await DB.insert("journal_lines", { entry_id: entry.id, account_id: "a3", debit: 0, credit: amount });
-        } else {
-          await DB.insert("journal_lines", { entry_id: entry.id, account_id: "a5", debit: amount, credit: 0 });
-          await DB.insert("journal_lines", { entry_id: entry.id, account_id: cashAcc, debit: 0, credit: amount });
-        }
+        var rows = [
+          { table: "payments", row: { kind: kind, party_type: ptype, party_id: partyId, amount: amount, method: method, register_id: regId, date: date, notes: document.getElementById("notes").value.trim() } },
+          { table: "journal_entries", row: { id: eid, number: jn, date: date, memo: isReceipt ? "سند قبض" : "سند صرف", source: "payment" } },
+          { table: "journal_lines", row: { entry_id: eid, account_id: isReceipt ? cashAcc : "a5", debit: amount, credit: 0 } },
+          { table: "journal_lines", row: { entry_id: eid, account_id: isReceipt ? "a3" : cashAcc, debit: 0, credit: amount } },
+        ];
+        if (reg) rows.push({ table: "cash_movements", row: {
+          register_id: regId, kind: isReceipt ? "in" : "out", amount: amount, date: date,
+          notes: (isReceipt ? "قبض: " : "صرف: ") + partyName({ party_type: ptype, party_id: partyId }),
+        } });
+        var jobs = [DB.insertRows(rows)];
+        if (party) jobs.push(DB.update(isReceipt ? "customers" : "suppliers", party.id, { balance: Math.max(0, (Number(party.balance) || 0) - amount) }));
+        if (reg) jobs.push(DB.update("cash_registers", regId, { balance: newBal }));
+        await Promise.all(jobs);
 
         UI.toast("تم حفظ السند");
         ov.remove(); await load();
