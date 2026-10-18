@@ -3,23 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1e3a8a" />
+    <meta name="theme-color" content="#182763" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="رصيد" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>نظام الشركة التجارية</title>
     <link rel="icon" href="favicon.ico" sizes="any" />
-    <link rel="stylesheet" href="css/style.css?v=22" />
+    <link rel="stylesheet" href="css/style.css?v=24" />
   </head>
   <body data-page="accounts">
     <div id="app"><div class="empty">جارٍ التحميل…</div></div>
     <!-- الشيل: config + ui.js يرسمان القائمة فورًا في أول إطار، والباقي defer حتى لا يحجب الرسم -->
-    <script src="js/config.js?v=22"></script>
-    <script src="js/ui.js?v=22"></script>
+    <script src="js/config.js?v=24"></script>
+    <script src="js/ui.js?v=24"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-    <script defer src="js/db.js?v=22"></script>
-    <script defer src="js/ledger.js?v=22"></script>
-    <script defer src="js/invoices.js?v=22"></script>
-    <script defer src="js/cheques.js?v=22"></script>
-    <script defer src="js/invoice-list.js?v=22"></script>
-    <script defer src="js/motion.js?v=22"></script>
-    <script defer src="js/pages/accounts.js?v=22"></script>
+    <script defer src="js/db.js?v=24"></script>
+    <script defer src="js/ledger.js?v=24"></script>
+    <script defer src="js/invoices.js?v=24"></script>
+    <script defer src="js/cheques.js?v=24"></script>
+    <script defer src="js/invoice-list.js?v=24"></script>
+    <script defer src="js/motion.js?v=24"></script>
+    <script defer src="js/pages/accounts.js?v=24"></script>
+      <script defer src="js/pwa.js?v=24"></script>
   </body>
 </html>

@@ -882,3 +882,41 @@ html.dark mark{background:#854d0e}
 .nav-skel { height: 38px; margin: 6px 0; border-radius: 10px; background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 75%); background-size: 200% 100%; }
 .page-skel { padding-top: 4px; }
 .user-slot { display: contents; }
+
+/* ======================================================================
+   PWA (v23): زر التثبيت + إرشاد iOS + وضع التطبيق المثبّت
+   ====================================================================== */
+.install-btn[hidden] { display: none !important; }
+.install-btn { color: var(--primary); border-color: var(--primary) !important; }
+.pwa-tip {
+  position: fixed; inset-inline: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 1000;
+  max-width: 420px; margin-inline: auto; padding: 16px 18px; border-radius: 16px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  box-shadow: 0 18px 50px rgba(7,11,26,.28); animation: fade .2s ease both;
+}
+.pwa-tip p { margin: 6px 0 12px; font-size: 13.5px; line-height: 1.8; color: var(--muted); }
+.pwa-tip button { font: inherit; font-weight: 600; padding: 8px 22px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; cursor: pointer; }
+.pwa-share { font-weight: 700; color: var(--primary); }
+/* عند التشغيل كتطبيق مثبّت: لا حاجة لزر التثبيت، واحترم حواف الشاشة (النوتش/الشريط السفلي) */
+@media (display-mode: standalone) {
+  .install-btn { display: none !important; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  .topbar { padding-top: max(10px, env(safe-area-inset-top)); }
+}
+
+/* لافتة "تثبيت التطبيق" التلقائية (موبايل) */
+.pwa-banner {
+  position: fixed; inset-inline: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 1001;
+  max-width: 460px; margin-inline: auto; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 18px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); box-shadow: 0 18px 50px rgba(7,11,26,.30); animation: fade .25s ease both;
+}
+.pwa-banner img { flex: none; width: 46px; height: 46px; border-radius: 12px; }
+.pwa-banner-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.5; }
+.pwa-banner-text b { font-size: 14px; }
+.pwa-banner-text span { font-size: 12px; color: var(--muted); }
+.pwa-banner-actions { display: flex; flex-direction: column; gap: 4px; }
+.pwa-banner-actions button { font: inherit; font-size: 13px; font-weight: 600; border: 0; border-radius: 10px; padding: 7px 16px; cursor: pointer; }
+.pwa-banner-actions .pwa-yes { background: var(--primary); color: #fff; }
+.pwa-banner-actions .pwa-no { background: transparent; color: var(--muted); padding-block: 3px; font-weight: 500; }
+@media (display-mode: standalone) { .pwa-banner { display: none !important; } }

@@ -411,7 +411,7 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtmlFor(ctx, active)}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 22</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 24</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>
@@ -425,6 +425,7 @@
             </div>
             <div class="topbar-end">
               <button type="button" class="top-search" data-action="focus-search" title="بحث (Ctrl+K)">${ICON.search}<span>ابحث أو انتقل إلى…</span><span class="kbd">Ctrl K</span></button>
+              <button type="button" class="ghost install-btn" data-action="install-app" id="install-btn" title="تثبيت التطبيق على جهازك" aria-label="تثبيت التطبيق" hidden>${ICON.download}</button>
               <button type="button" class="ghost theme-btn" data-action="toggle-theme" title="ثيم داكن/فاتح" id="theme-btn">${ICON.moon}</button>
               <div class="quick-wrap">
                 <button type="button" class="primary small" data-action="toggle-quick">${ICON.plus}<span>إجراء سريع</span></button>
@@ -640,6 +641,8 @@
         UI.toast(document.documentElement.classList.contains("dark") ? "الوضع الداكن" : "الوضع الفاتح");
       } else if (act === "focus-search" || act === "open-cmd") {
         openCmd();
+      } else if (act === "install-app") {
+        if (window.PWA) PWA.install();
       } else if (act === "logout") {
         DB.logout();
       } else if (act === "toggle-quick") {
