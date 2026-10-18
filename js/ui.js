@@ -818,6 +818,14 @@
         }
       }
 
+      // إغلاق القائمة الجانبية عند النقر على طبقة التعتيم (خارج السايدبار)
+      var lay0 = document.getElementById("layout");
+      if (lay0 && lay0.classList.contains("nav-open")) {
+        if (!e.target.closest(".sidebar") && !e.target.closest("[data-action='toggle-nav']") && !e.target.closest(".menu-btn")) {
+          lay0.classList.remove("nav-open");
+        }
+      }
+
       var t = e.target.closest("[data-action]");
       if (!t) {
         var qm = document.getElementById("quick-menu");
