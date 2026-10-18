@@ -510,7 +510,199 @@
     bar.style.width = "0%";
     requestAnimationFrame(function () { bar.style.width = "70%"; });
   }
-  function go(href) { saveNavScroll(); startProgress(); location.href = href; }
+  function endProgress() {
+    var bar = document.getElementById("nprogress");
+    if (!bar) return;
+    bar.style.width = "100%";
+    setTimeout(function () {
+      bar.classList.remove("active");
+      bar.style.width = "0%";
+    }, 200);
+  }
+
+  // ======================================================================
+  // تنقل SPA: القائمة الجانبية والشريط العلوي يبقيان ثابتين — لا اختفاء ولا وميض
+  // ======================================================================
+  var PAGE_SCRIPTS = {
+    dashboard: "js/pages/dashboard.js",
+    admin: "js/pages/admin.js",
+    sales: "js/pages/sales.js",
+    returns: "js/pages/returns.js",
+    "purchase-returns": "js/pages/purchase-returns.js",
+    purchases: "js/pages/purchases.js",
+    customers: "js/pages/customers.js",
+    suppliers: "js/pages/suppliers.js",
+    products: "js/pages/products.js",
+    warehouses: "js/pages/warehouses.js",
+    stocktake: "js/pages/stocktake.js",
+    transfers: "js/pages/transfers.js",
+    payments: "js/pages/payments.js",
+    accounts: "js/pages/accounts.js",
+    journal: "js/pages/journal.js",
+    expenses: "js/pages/expenses.js",
+    reports: "js/pages/reports.js",
+    settings: "js/pages/settings.js",
+    "cash-registers": "js/pages/cash-registers.js",
+    treasury: "js/pages/treasury.js",
+    cheques: "js/pages/cheques.js",
+    banks: "js/pages/banks.js",
+    attendance: "js/pages/attendance.js",
+    "sales-sheet": "js/pages/sales-sheet.js",
+    "daily-report": "js/pages/daily-report.js",
+    staff: "js/pages/staff.js",
+    statements: "js/pages/statements.js",
+    "party-trial": "js/pages/party-trial.js",
+    employees: "js/pages/employees.js",
+    payroll: "js/pages/payroll.js",
+    invoice: "js/pages/invoice-entry.js",
+  };
+  var pageScriptCache = {};
+  var spaNavigating = false;
+  var spaVersion = 0;
+
+  function hrefToPageKey(href) {
+    try {
+      var u = new URL(href, location.href);
+      var file = (u.pathname.split("/").pop() || "index.html").replace(/\.html$/i, "");
+      if (file === "index" || file === "") return "dashboard";
+      return file;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isSpaHref(href) {
+    if (!href || href.charAt(0) === "#" || href.indexOf("http") === 0) return false;
+    if (!/\.html/i.test(href)) return false;
+    var key = hrefToPageKey(href);
+    if (!key) return false;
+    // login / offline تبقى تحميلاً كاملاً
+    if (key === "login" || key === "offline") return false;
+    return !!PAGE_SCRIPTS[key] || key === "dashboard";
+  }
+
+  function setActiveNav(active) {
+    if (!shell) return;
+    shell.active = active;
+    var nav = document.getElementById("sidebar-nav");
+    if (nav) {
+      nav.querySelectorAll("a.nav").forEach(function (a) {
+        var on = a.getAttribute("data-nav") === active;
+        a.classList.toggle("active", on);
+        if (on) a.setAttribute("aria-current", "page");
+        else a.removeAttribute("aria-current");
+      });
+    }
+  }
+
+  function applyPageChrome(key, search) {
+    var override = PAGE_BOOT[key] || {};
+    var active = override.active || key;
+    var title = override.title;
+    if (key === "invoice") {
+      var kindParam = null;
+      try { kindParam = new URLSearchParams(search || "").get("kind"); } catch (e) {}
+      var k = INVOICE_KINDS[kindParam] || INVOICE_KINDS.sale;
+      active = k.page;
+      title = k.title;
+    }
+    title = title || TITLES[active] || TITLES[key] || [key, ""];
+    setActiveNav(active);
+    setPageTitle(title);
+    if (document.body) document.body.setAttribute("data-page", key);
+    document.title = title[0] + " · رصيد";
+  }
+
+  async function runPageScript(src) {
+    var code = pageScriptCache[src];
+    if (!code) {
+      var res = await fetch(src + (src.indexOf("?") >= 0 ? "&" : "?") + "v=24");
+      if (!res.ok) throw new Error("تعذّر تحميل الصفحة (" + res.status + ")");
+      code = await res.text();
+      pageScriptCache[src] = code;
+    }
+    // إعادة تنفيذ الـ IIFE في كل زيارة للصفحة
+    (0, eval)(code);
+  }
+
+  async function spaLoad(href, opts) {
+    opts = opts || {};
+    var key = hrefToPageKey(href);
+    if (!key || !PAGE_SCRIPTS[key]) {
+      location.href = href;
+      return;
+    }
+    var myVer = ++spaVersion;
+    spaNavigating = true;
+    saveNavScroll();
+    startProgress();
+    closeCmd();
+    var qm = document.getElementById("quick-menu");
+    if (qm) qm.hidden = true;
+    var lay = document.getElementById("layout");
+    if (lay) lay.classList.remove("nav-open");
+
+    var search = "";
+    try { search = new URL(href, location.href).search; } catch (e) {}
+
+    applyPageChrome(key, search);
+
+    var pageEl = document.getElementById("page");
+    if (pageEl) {
+      pageEl.innerHTML = '<div class="page-skel" aria-hidden="true"><div class="skel" style="height:34px;width:220px"></div><div class="skel" style="height:96px;margin-top:18px"></div><div class="skel" style="height:260px;margin-top:14px"></div></div>';
+      pageEl.classList.remove("anim-stagger");
+      void pageEl.offsetWidth;
+      pageEl.classList.add("anim-stagger");
+    }
+
+    // تمرير المحتوى لأعلى عند التنقل
+    var main = document.querySelector(".main");
+    if (main) main.scrollTop = 0;
+    window.scrollTo(0, 0);
+
+    if (!opts.replace && !opts.pop) {
+      try {
+        history.pushState({ spa: true, page: key }, "", href);
+      } catch (e) {}
+    } else if (opts.replace) {
+      try {
+        history.replaceState({ spa: true, page: key }, "", href);
+      } catch (e) {}
+    }
+
+    try {
+      await runPageScript(PAGE_SCRIPTS[key]);
+    } catch (err) {
+      if (myVer !== spaVersion) return;
+      if (pageEl) {
+        pageEl.innerHTML = '<div class="card error" style="padding:24px">تعذّر فتح الصفحة: ' +
+          (err && err.message ? err.message : String(err)) +
+          ' <button type="button" class="primary small" onclick="location.reload()">إعادة المحاولة</button></div>';
+      }
+    }
+    if (myVer === spaVersion) endProgress();
+    spaNavigating = false;
+  }
+
+  function go(href) {
+    if (!href) return;
+    // روابط كاملة أو login → تحميل كامل
+    if (!isSpaHref(href)) {
+      saveNavScroll();
+      startProgress();
+      location.href = href;
+      return;
+    }
+    // نفس الصفحة بدون تغيير استعلام → لا شيء
+    try {
+      var next = new URL(href, location.href);
+      if (next.pathname === location.pathname && next.search === location.search) {
+        closeCmd();
+        return;
+      }
+    } catch (e) {}
+    spaLoad(href);
+  }
 
   function openCmd() {
     var ov = document.getElementById("cmd-overlay");
@@ -607,10 +799,15 @@
     });
 
     document.addEventListener("click", function (e) {
-      // التنقل بين الصفحات: انتقال أصلي فوري (بدون تأخير أو إخفاء للمحتوى) + حفظ موضع تمرير القائمة
+      // تنقل SPA: القائمة تبقى ثابتة، يُحدَّث محتوى الصفحة فقط
       var a = e.target.closest && e.target.closest("a[href]");
       if (a && !e.defaultPrevented && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) && e.button === 0) {
         var href = a.getAttribute("href") || "";
+        if (isSpaHref(href) && !a.target) {
+          e.preventDefault();
+          go(href);
+          return;
+        }
         if (href && href.charAt(0) !== "#" && href.indexOf("http") !== 0 && /\.html/.test(href) && !a.target) {
           saveNavScroll();
           startProgress();
@@ -659,6 +856,22 @@
       var bar = document.getElementById("nprogress");
       if (bar) { bar.classList.remove("active"); bar.style.width = "0%"; }
     });
+
+    // أزرار المتصفح رجوع/تقدم — تحميل الصفحة داخل الشيل الثابت
+    window.addEventListener("popstate", function () {
+      if (!shell) return;
+      var href = location.pathname.split("/").pop() || "index.html";
+      if (location.search) href += location.search;
+      if (isSpaHref(href) || isSpaHref(location.href)) {
+        spaLoad(href, { pop: true });
+      }
+    });
+
+    // تعليم الحالة الحالية كـ SPA حتى يعمل الرجوع بشكل صحيح
+    try {
+      var curKey = (document.body && document.body.getAttribute("data-page")) || "dashboard";
+      history.replaceState({ spa: true, page: curKey }, "", location.href);
+    } catch (e) {}
   }
 
   // يُستدعى تلقائيًا فور تحميل ui.js (قبل DB وباقي السكربتات الثقيلة) لإظهار الشيل في أول رسم
