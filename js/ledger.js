@@ -83,7 +83,12 @@
     var sign = (o.type === "in" || o.type === "transfer_in" || o.type === "opening") ? 1 : -1;
     var amount = N(o.amount);
     if (amount <= 0) throw new Error("المبلغ غير صحيح");
+    var all = await DB.list("cash_movements");
+    var seq = 0;
+    all.forEach(function (m) { if (m.register_id === o.register_id && N(m.seq) > seq) seq = N(m.seq); });
+    if (!seq) seq = all.filter(function (m) { return m.register_id === o.register_id; }).length;
     var rec = await DB.insert("cash_movements", {
+      seq: seq + 1, ref: o.ref || "", ptab_id: o.ptab_id || "",
       register_id: o.register_id, type: o.type, kind: sign > 0 ? "in" : "out", amount: amount,
       date: o.date || today(), notes: o.notes || "", tab_id: o.tab_id || "",
       party_type: o.party_type || "", party_id: o.party_id || "",

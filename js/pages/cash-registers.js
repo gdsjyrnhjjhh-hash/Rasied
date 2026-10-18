@@ -22,7 +22,6 @@
       </div>
       <div class="seg" id="seg">
         <button type="button" class="on" data-v="regs">الخزائن</button>
-        <button type="button" data-v="stmt">كشف الحساب</button>
         <button type="button" data-v="tabs">التبويبات</button>
       </div>
       <div id="view" class="stack"></div>
@@ -46,24 +45,17 @@
         <div class="stat teal"><div class="label">إجمالي النقدية</div><div class="value">${money(total)}</div></div>
         <div class="stat"><div class="label">عدد الخزائن</div><div class="value">${registers.length}</div></div>
       </div>
-      <div class="card table-wrap" id="list">
-        <table>
-          <thead><tr><th>الخزينة</th><th>الموقع</th><th>الرصيد</th><th></th></tr></thead>
-          <tbody>
-            ${registers.map(function (r) {
-              return html`<tr>
-                <td><b>${r.name}</b></td>
-                <td>${r.location || "—"}</td>
-                <td class="accent"><b>${money(r.balance)}</b></td>
-                <td><div class="actions-cell">
-                  <button class="small" data-act="stmt" data-id="${r.id}">كشف حساب</button>
-                  <button class="small" data-act="edit" data-id="${r.id}">تعديل</button>
-                  <button class="small danger" data-act="del" data-id="${r.id}">حذف</button>
-                </div></td>
-              </tr>`;
-            }).join("") || html`<tr><td colspan="4" class="empty">لا توجد خزائن</td></tr>`}
-          </tbody>
-        </table>
+      <div class="reg-grid" id="list">
+        ${registers.map(function (r) {
+          return html`<div class="card reg-card">
+            <div class="reg-head"><b>${esc(r.name)}</b><span class="muted">${esc(r.location || "")}</span></div>
+            <div class="reg-bal">${money(r.balance)}</div>
+            <div class="actions-cell">
+              <a class="button small primary" href="treasury.html?id=${r.id}">فتح الخزينة</a>
+              <button class="small" data-act="edit" data-id="${r.id}">تعديل</button>
+              <button class="small danger" data-act="del" data-id="${r.id}">حذف</button>
+            </div></div>`;
+        }).join("") || '<div class="card empty">لا توجد خزائن</div>'}
       </div>`;
     document.getElementById("list").onclick = async function (e) {
       var btn = e.target.closest("[data-act]"); if (!btn) return;
@@ -297,7 +289,7 @@
   document.getElementById("btn-add").onclick = function () { openReg(null); };
   document.getElementById("btn-move").onclick = openMove;
   document.getElementById("btn-transfer").onclick = openTransfer;
-  if (f.reg) view = "stmt";
+  if (f.reg) { location.replace("treasury.html?id=" + f.reg); return; }
   await load();
-  if (view === "stmt") setView("stmt");
+  
 })();

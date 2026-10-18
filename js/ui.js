@@ -60,10 +60,12 @@
     warehouses: svg('<path d="M3 9.5 12 3l9 6.5V21H3z"/><path d="M9 21v-7h6v7"/>'),
     stocktake: svg('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>'),
     transfers: svg('<path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/>'),
+    cheques: svg('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 15l2 2 3-4"/>'),
     banks: svg('<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>'),
     attendance: svg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4"/>'),
     "sales-sheet": svg('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'),
     "daily-report": svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    staff: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3.2-5.5 6.5-5.5s6 2 6.5 5.5"/><path d="M17 5.5a3 3 0 010 5.5M19 14.8c1.6.8 2.6 2.4 3 5.2"/>'),
     statements: svg('<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>'),
     "party-trial": svg('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'),
     "cash-registers": svg('<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="15" r="2"/><path d="M6 3h12l1 3H5z"/>'),
@@ -125,6 +127,7 @@
         { key: "transfers", href: "transfers.html", label: "تحويلات المخازن" },
         { key: "cash-registers", href: "cash-registers.html", label: "الخزائن" },
         { key: "banks", href: "banks.html", label: "البنوك" },
+        { key: "cheques", href: "cheques.html", label: "الشيكات" },
       ],
     },
     {
@@ -151,7 +154,10 @@
       { key: "sales-sheet", href: "sales-sheet.html", label: "كشف المبيعات" },
       { key: "daily-report", href: "daily-report.html", label: "التقرير اليومي" },
     ] },
-    { group: "النظام", items: [{ key: "settings", href: "settings.html", label: "الإعدادات" }] },
+    { group: "النظام", items: [
+      { key: "staff", href: "staff.html", label: "مستخدمو الشركة" },
+      { key: "settings", href: "settings.html", label: "الإعدادات" },
+    ] },
   ];
   var NAV_ADMIN = { group: "الإدارة", items: [{ key: "admin", href: "admin.html", label: "إدارة المستخدمين" }] };
 
@@ -174,11 +180,13 @@
     expenses: ["المصروفات", "مصروفات التشغيل"],
     reports: ["التقارير المالية", "ميزان مراجعة · أرباح وخسائر · تصدير"],
     settings: ["الإعدادات", "الشركة · الضريبة · Demo · Cloudflare"],
-    "cash-registers": ["الخزائن", "كشف حساب · تحويلات · تبويبات"],
+    "cash-registers": ["الخزائن", "أرصدة · فتح الخزينة · تبويبات"],
+    cheques: ["الشيكات", "واردة وصادرة · استحقاق · تحصيل وصرف"],
     banks: ["البنوك", "حسابات بنكية · إيداع وسحب · كشف حساب"],
     attendance: ["الحضور والانصراف", "تسجيل يومي وملخص شهري"],
     "sales-sheet": ["كشف المبيعات", "فواتير الفترة وملخص الأصناف والربح"],
     "daily-report": ["التقرير اليومي", "ملخص حركة يوم واحد"],
+    staff: ["مستخدمو الشركة", "إضافة موظفين وتحديد الصفحات المسموحة لكل واحد"],
     statements: ["كشوف الحساب", "عميل / مورد · تحصيل · خصم · تسوية"],
     "party-trial": ["ميزان العملاء والموردين", "أرصدة أول وآخر الفترة وملخص النشاط"],
     employees: ["الموظفين", "بيانات الموظفين والوظائف"],
@@ -248,7 +256,7 @@
     return t ? t.label : k;
   }
 
-  async function init(active) {
+  async function init(active, opts) {
     var app = document.getElementById("app");
     if (!app) return null;
     if (DB.fatal) {
@@ -277,6 +285,15 @@
     var NAVX = isAdmin ? NAV.concat([NAV_ADMIN]) : NAV;
     if (active === "admin" && !isAdmin) { location.replace("index.html"); return null; }
 
+    // موظف الشركة: يرى فقط الصفحات المسموحة له (الرئيسية دائمًا مسموحة؛ الإعدادات وإدارة المستخدمين للمالك فقط)
+    var isStaff = !!(prof && prof.company_role === "staff");
+    var perms = (prof && Array.isArray(prof.permissions)) ? prof.permissions : [];
+    function allowed(key) { return !isStaff || key === "dashboard" || (key !== "settings" && key !== "staff" && perms.indexOf(key) !== -1); }
+    if (isStaff) {
+      NAVX = NAVX.map(function (g) { return { group: g.group, items: g.items.filter(function (it) { return allowed(it.key); }) }; })
+        .filter(function (g) { return g.items.length; });
+    }
+
     // ثيم محفوظ
     try {
       var savedTheme = localStorage.getItem("trading_theme");
@@ -289,7 +306,7 @@
     try { var co = DB.getCompany(); if (co && co.name) companyBrand = co.name; } catch (e) {}
     if (!DB.isDemo()) companySub = "سحابة · متصل";
 
-    var title = TITLES[active] || [active, ""];
+    var title = (opts && opts.title) || TITLES[active] || [active, ""];
     var crumbGroup = "";
     NAVX.forEach(function (g) {
       g.items.forEach(function (l) {
@@ -334,7 +351,7 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtml}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 20</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 21</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>
@@ -554,6 +571,10 @@
     setInterval(tick, 30000);
 
     var pageEl = document.getElementById("page");
+    if (!allowed(active) || (active === "staff" && isStaff)) {
+      pageEl.innerHTML = '<div class="card empty" style="padding:48px 20px"><h3 style="margin:0 0 8px">غير مصرّح لك بهذه الصفحة</h3><p class="muted" style="margin:0">تواصل مع مالك الشركة لإضافة الصلاحية.</p></div>';
+      return null;
+    }
     requestAnimationFrame(function () {
       if (!pageEl) return;
       pageEl.classList.remove("anim-stagger");

@@ -124,3 +124,23 @@ cd trading-system && python3 -m http.server 8000
 
 ### v20 — فاتورة البيع
 - خصم على الفاتورة (`discount`, `gross`; و`subtotal` = بعد الخصم وقبل الضريبة)، رقم الدفتر `book_no`، المندوب `rep_id` (من الموظفين)، منع المدفوع الأكبر من الإجمالي، وتنبيه تجاوز حد ائتمان العميل. الخصم يظهر في العرض والطباعة.
+
+## 14. مستخدمو الشركة والصلاحيات (مطبّق على Supabase ومنشور)
+> تم تشغيل الـmigration ونشر الدالة `staff` (verify_jwt=true) على المشروع cunfabvfjkiijycnxwxx، واختُبرت الصلاحيات داخل معاملة تُلغى: المالك يدير موظفيه فقط، ومالك شركة أخرى والموظف محجوبان، والموظف لا يعدّل بيانات الشركة.
+1. شغّل `supabase/migrations/20261018000001_company_staff.sql` في SQL Editor (يضيف `company_role/permissions/created_by` وكل الحسابات الحالية تصبح owner، ودوال `company_staff` و`staff_update` و`create_staff`، ويحصر تعديل بيانات الشركة بالمالك).
+2. انشر الدالة `supabase/functions/staff/index.ts` باسم `staff` مع verify_jwt=true.
+3. الواجهة: صفحة `staff.html` (للمالك فقط) تضيف موظفًا برقم تليفون وكلمة مرور وصفحات مسموحة (قوالب: مبيعات/أمين مخزن/محاسب)، وتوقفه أو تحذفه أو تغيّر كلمة مروره.
+4. التنفيذ: القائمة والصفحات تُحجب في الواجهة (`UI.init`)، أما العزل بين الشركات فمطبّق في قاعدة البيانات. صلاحيات الصفحات ليست مفروضة على مستوى الجدول داخل Supabase (كل البيانات في `records`)، فهي لتنظيم العمل لا لمنع موظف تقني من الوصول لبيانات شركته عبر أدوات المتصفح.
+
+## 15) v21 — الفواتير والمرتجعات والخزينة بنمط ROLLEX
+- `js/invoices.js` (Invoices): منطق موحّد للبيع/الشراء/مرتجع البيع/مرتجع الشراء: compute / save / reverse / remove / printBody. التعديل والحذف يعكسان الأثر كاملًا (مخزون، رصيد الطرف، قيود، دفعة، حركة خزينة).
+- `invoice.html` + `js/pages/invoice-entry.js`: صفحة إدخال (?kind=sale|purchase|sale_return|purchase_return&id=). الخصم، الناولون، رقم الدفتر، المندوب، الموقع، شريط الإجماليات.
+- `js/invoice-list.js`: قائمة موحّدة (sales/purchases/returns/purchase-returns.js سطر واحد).
+- الخزينة: `cash-registers.html` بطاقات الخزائن + التبويبات، و`treasury.html?id=` (js/pages/treasury.js): لوحة علوية، رقم حركة `seq`، تبويب عام `tab_id` وخاص `ptab_id`، إضافة/تعديل/حذف (حركات المستندات `ref`/`party_id` محمية، حذف التحويل يحذف الطرفين بـ `grp`)، رصيد افتتاحي، تحويل داخل الصفحة، بحث عربي مطبّع مع تظليل ونسخ النتائج، ترتيب برقم الحركة، تصدير CSV، طباعة، استيراد CSV (تاريخ,بيان,وارد,صادر)، جرد نقدية محفوظ في الجدول `cash_counts` (غير قابل للتعديل).
+- لا تغييرات في قاعدة البيانات (جدول records العام يستوعب الجداول الجديدة).
+
+## 16) الشيكات والبنوك (v21)
+- `js/cheques.js` (Cheques) + `cheques.html` + `js/pages/cheques.js`: جدول `cheques` (dir in|out، status، due_date، hist). واردة من عملاء: portfolio → deposited → collected (بنك/خزينة) | endorsed (تظهير لمورد) | bounced. صادرة لموردين: pending → cleared | bounced. «تراجع» يعكس آثار المرحلة، والحذف يعكس كل شيء.
+- حسابات جديدة تُنشأ تلقائيًا: a13 أوراق القبض، a14 أوراق الدفع. السجلات المرتبطة تحمل `cheque_id` + `stage` (reg/collect/endorse/bounce/clear) في payments/party_txns/bank_movements/journal_entries(source_id).
+- `banks.js` أُعيد بناؤه: بطاقات حسابات، كشف برصيد جارٍ، فلترة، إيداع/سحب (مع الخزينة cash_move_id)، تحويل بين البنوك (grp)، حذف حركات (حركات الشيكات مقفلة)، تصدير وطباعة.
+- لا تغييرات في قاعدة البيانات.
