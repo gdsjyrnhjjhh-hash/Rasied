@@ -2,7 +2,7 @@
   var page = await UI.init("sales");
   if (!page) return;
   var html = UI.html, money = UI.money;
-  var sales = [], customers = [], products = [], lines = [];
+  var sales = [], customers = [], products = [], lines = [], reps = [];
   var vatRate = 14, vatEnabled = true, company = { name: "شركة النور للتجارة", phone: "", address: "", tax_id: "" };
 
   page.innerHTML = html`
@@ -78,10 +78,11 @@
     var body =
       "<h1>" + (company.name || "الشركة") + "</h1>" +
       "<h2>فاتورة مبيعات رقم " + s.number + "</h2>" +
-      "<div class=meta><div><div>العميل: <b>" + custName(s.customer_id) + "</b></div><div>التاريخ: " + (s.date || "") + "</div><div>ملاحظات: " + (s.notes || "—") + "</div></div>" +
+      "<div class=meta><div><div>العميل: <b>" + custName(s.customer_id) + "</b></div><div>التاريخ: " + (s.date || "") + "</div>" + (s.book_no ? "<div>رقم الدفتر: " + s.book_no + "</div>" : "") + "<div>ملاحظات: " + (s.notes || "—") + "</div></div>" +
       "<div><div>هاتف: " + (company.phone || "") + "</div><div>العنوان: " + (company.address || "") + "</div><div>الرقم الضريبي: " + (company.tax_id || "") + "</div></div></div>" +
       "<table><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>" + rows + "</tbody></table>" +
       "<table class=totals>" +
+      (s.discount > 0 ? "<tr><td>الإجمالي قبل الخصم</td><td>" + money(s.gross) + "</td></tr><tr><td>الخصم</td><td>" + money(s.discount) + "</td></tr>" : "") +
       "<tr><td>قبل الضريبة</td><td>" + money(sub) + "</td></tr>" +
       "<tr><td>ض.ق.م (" + (s.vat_rate || 0) + "%)</td><td>" + money(vat) + "</td></tr>" +
       "<tr><td>الإجمالي</td><td>" + money(s.total) + "</td></tr>" +
@@ -124,6 +125,7 @@
           </table>
         </div>
         <div class="invoice-totals">
+          ${s.discount > 0 ? html`<div class="box"><span>الخصم</span><b>${money(s.discount)}</b></div>` : ""}
           <div class="box"><span>قبل الضريبة</span><b>${money(s.subtotal != null ? s.subtotal : s.total)}</b></div>
           <div class="box"><span>ض.ق.م (${s.vat_rate || 0}%)</span><b>${money(s.vat_amount || 0)}</b></div>
           <div class="box"><span>الإجمالي</span><b class="accent">${money(s.total)}</b></div>
@@ -188,7 +190,10 @@
             }).join("")}</select>
           </div>
           <div class="field"><label>التاريخ</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>خصم على الفاتورة</label><input id="disc" type="number" step="0.01" min="0" value="0"></div>
           <div class="field"><label>مدفوع الآن</label><input id="paid" type="number" step="0.01" value="0"></div>
+          <div class="field"><label>رقم الدفتر / المرجع</label><input id="book" dir="ltr"></div>
+          <div class="field"><label>المندوب</label><select id="rep"><option value="">— بدون —</option>${reps.map(function (r) { return html`<option value="${r.id}">${r.name}</option>`; }).join("")}</select></div>
           <div class="field"><label>ض.ق.م</label>
             <select id="vat-on">
               <option value="1" ${vatEnabled ? "selected" : ""}>مفعّلة (${vatRate}%)</option>
@@ -225,14 +230,24 @@
       var subtotal = lineRows.reduce(function (s, l) { return s + l.qty * l.unit_price; }, 0);
       var onVat = document.getElementById("vat-on").value === "1";
       var rate = onVat ? vatRate : 0;
+      var gross = subtotal;
+      var discount = Math.max(0, Number(document.getElementById("disc").value) || 0);
+      if (discount > gross) { UI.toast("الخصم أكبر من إجمالي البنود", true); return; }
+      subtotal = gross - discount;
       var vatAmount = Math.round(subtotal * rate) / 100;
       var total = subtotal + vatAmount;
       var paid = Number(document.getElementById("paid").value) || 0;
+      if (paid > total + 0.004) { UI.toast("المدفوع أكبر من إجمالي الفاتورة", true); return; }
       var custId = document.getElementById("cust").value;
+      var cu = customers.filter(function (x) { return x.id === custId; })[0];
+      if (cu && Number(cu.credit_limit) > 0 && (Number(cu.balance) || 0) + (total - paid) > Number(cu.credit_limit)) {
+        if (!confirm("هذه الفاتورة تتجاوز حد ائتمان العميل (" + money(cu.credit_limit) + "). متابعة؟")) return;
+      }
       try {
         var num = await DB.nextNumber("sales");
         var sale = await DB.insert("sales", {
           number: num, customer_id: custId, date: document.getElementById("date").value, status: "posted",
+          gross: gross, discount: discount, book_no: document.getElementById("book").value.trim(), rep_id: document.getElementById("rep").value,
           subtotal: subtotal, vat_rate: rate, vat_amount: vatAmount, total: total, paid: paid,
           notes: document.getElementById("notes").value.trim(),
         });
@@ -273,8 +288,8 @@
 
   async function load() {
     loadCompany();
-    var d = await Promise.all([DB.list("sales"), DB.list("customers"), DB.list("products"), DB.list("sale_lines")]);
-    sales = d[0]; customers = d[1]; products = d[2]; lines = d[3];
+    var d = await Promise.all([DB.list("sales"), DB.list("customers"), DB.list("products"), DB.list("sale_lines"), DB.list("employees")]);
+    sales = d[0]; customers = d[1]; products = d[2]; lines = d[3]; reps = d[4].filter(function (e) { return e.status !== "inactive"; });
     renderList();
   }
 

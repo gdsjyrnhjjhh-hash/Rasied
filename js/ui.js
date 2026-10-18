@@ -14,7 +14,8 @@
   // أرقام لاتينية موحّدة في كل النظام (مناسبة للمحاسبة)
   function money(n) {
     if (n == null || isNaN(n)) return "—";
-    return Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    var t = Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return t.charAt(0) === "-" ? "\u200E" + t : t;   // LRM: يبقي علامة السالب يسار الرقم داخل RTL
   }
   function num(n) {
     return Number(n || 0).toLocaleString("en-US");
@@ -59,6 +60,12 @@
     warehouses: svg('<path d="M3 9.5 12 3l9 6.5V21H3z"/><path d="M9 21v-7h6v7"/>'),
     stocktake: svg('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>'),
     transfers: svg('<path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/>'),
+    banks: svg('<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>'),
+    attendance: svg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4"/>'),
+    "sales-sheet": svg('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'),
+    "daily-report": svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    statements: svg('<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>'),
+    "party-trial": svg('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'),
     "cash-registers": svg('<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="15" r="2"/><path d="M6 3h12l1 3H5z"/>'),
     employees: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
     payroll: svg('<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/>'),
@@ -117,12 +124,14 @@
         { key: "stocktake", href: "stocktake.html", label: "الجرد المخزني" },
         { key: "transfers", href: "transfers.html", label: "تحويلات المخازن" },
         { key: "cash-registers", href: "cash-registers.html", label: "الخزائن" },
+        { key: "banks", href: "banks.html", label: "البنوك" },
       ],
     },
     {
       group: "الموارد البشرية",
       items: [
         { key: "employees", href: "employees.html", label: "الموظفين" },
+        { key: "attendance", href: "attendance.html", label: "الحضور والانصراف" },
         { key: "payroll", href: "payroll.html", label: "المرتبات" },
       ],
     },
@@ -130,12 +139,18 @@
       group: "المحاسبة",
       items: [
         { key: "payments", href: "payments.html", label: "سندات قبض/صرف" },
+        { key: "statements", href: "statements.html", label: "كشوف الحساب" },
+        { key: "party-trial", href: "party-trial.html", label: "ميزان العملاء والموردين" },
         { key: "accounts", href: "accounts.html", label: "دليل الحسابات" },
         { key: "journal", href: "journal.html", label: "قيود اليومية" },
         { key: "expenses", href: "expenses.html", label: "المصروفات" },
       ],
     },
-    { group: "التقارير", items: [{ key: "reports", href: "reports.html", label: "التقارير المالية" }] },
+    { group: "التقارير", items: [
+      { key: "reports", href: "reports.html", label: "التقارير المالية" },
+      { key: "sales-sheet", href: "sales-sheet.html", label: "كشف المبيعات" },
+      { key: "daily-report", href: "daily-report.html", label: "التقرير اليومي" },
+    ] },
     { group: "النظام", items: [{ key: "settings", href: "settings.html", label: "الإعدادات" }] },
   ];
   var NAV_ADMIN = { group: "الإدارة", items: [{ key: "admin", href: "admin.html", label: "إدارة المستخدمين" }] };
@@ -159,7 +174,13 @@
     expenses: ["المصروفات", "مصروفات التشغيل"],
     reports: ["التقارير المالية", "ميزان مراجعة · أرباح وخسائر · تصدير"],
     settings: ["الإعدادات", "الشركة · الضريبة · Demo · Cloudflare"],
-    "cash-registers": ["الخزائن", "أرصدة النقدية والحركة"],
+    "cash-registers": ["الخزائن", "كشف حساب · تحويلات · تبويبات"],
+    banks: ["البنوك", "حسابات بنكية · إيداع وسحب · كشف حساب"],
+    attendance: ["الحضور والانصراف", "تسجيل يومي وملخص شهري"],
+    "sales-sheet": ["كشف المبيعات", "فواتير الفترة وملخص الأصناف والربح"],
+    "daily-report": ["التقرير اليومي", "ملخص حركة يوم واحد"],
+    statements: ["كشوف الحساب", "عميل / مورد · تحصيل · خصم · تسوية"],
+    "party-trial": ["ميزان العملاء والموردين", "أرصدة أول وآخر الفترة وملخص النشاط"],
     employees: ["الموظفين", "بيانات الموظفين والوظائف"],
     payroll: ["المرتبات", "مسير الرواتب والترحيل المحاسبي"],
   };
@@ -313,7 +334,7 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtml}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 19</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 20</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>

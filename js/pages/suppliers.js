@@ -33,19 +33,21 @@
     });
     document.getElementById("list").innerHTML = html`
       <table>
-        <thead><tr><th>الاسم</th><th>الهاتف</th><th>الرصيد الدائن</th><th>ملاحظات</th><th></th></tr></thead>
+        <thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الرصيد الدائن</th><th>حد التعامل</th><th></th></tr></thead>
         <tbody>
-          ${rows.length === 0 ? html`<tr><td colspan="5" class="empty">لا يوجد موردين</td></tr>` :
+          ${rows.length === 0 ? html`<tr><td colspan="6" class="empty">لا يوجد موردين</td></tr>` :
             rows.map(function (c) {
               return html`<tr>
+                <td dir="ltr" class="muted">${c.code || "—"}</td>
                 <td><b>${c.name}</b></td>
                 <td dir="ltr">${c.phone || "—"}</td>
                 <td class="${c.balance > 0 ? "accent" : ""}">${money(c.balance)}</td>
-                <td class="muted">${c.notes || ""}</td>
-                <td>
+                <td>${c.credit_limit ? money(c.credit_limit) : "—"} ${c.credit_limit && c.balance > c.credit_limit ? '<span class="badge err">تجاوز</span>' : ""}</td>
+                <td><div class="actions-cell">
+                  <a class="small button" href="statements.html?type=supplier&id=${c.id}">كشف حساب</a>
                   <button class="small" data-id="${c.id}" data-act="edit">تعديل</button>
                   <button class="small danger" data-id="${c.id}" data-act="del">حذف</button>
-                </td>
+                </div></td>
               </tr>`;
             }).join("")}
         </tbody>
@@ -63,6 +65,10 @@
         <div class="form-grid">
           <div class="field"><label>الاسم</label><input id="name" required value="${c.name || ""}"></div>
           <div class="field"><label>الهاتف</label><input id="phone" dir="ltr" value="${c.phone || ""}"></div>
+          <div class="field"><label>الكود</label><input id="code" dir="ltr" value="${c.code || ""}" placeholder="تلقائي"></div>
+          <div class="field"><label>رصيد افتتاحي</label><input id="opening" type="number" step="0.01" value="${c.opening_balance || 0}"></div>
+          <div class="field"><label>حد التعامل (0 = بدون)</label><input id="limit" type="number" min="0" step="0.01" value="${c.credit_limit || 0}"></div>
+          <div class="field"><label>العنوان</label><input id="address" value="${c.address || ""}"></div>
           <div class="field full"><label>ملاحظات</label><input id="notes" value="${c.notes || ""}"></div>
         </div>
         <div class="row gap" style="justify-content:flex-end">
@@ -80,10 +86,14 @@
         name: document.getElementById("name").value.trim(),
         phone: document.getElementById("phone").value.trim(),
         notes: document.getElementById("notes").value.trim(),
+        code: document.getElementById("code").value.trim() || (isNew ? "S" + String(suppliers.length + 1).padStart(4, "0") : c.code || ""),
+        opening_balance: Number(document.getElementById("opening").value) || 0,
+        credit_limit: Number(document.getElementById("limit").value) || 0,
+        address: document.getElementById("address").value.trim(),
       };
       try {
-        if (isNew) { payload.balance = 0; await DB.insert("suppliers", payload); }
-        else await DB.update("suppliers", c.id, payload);
+        if (isNew) { payload.balance = payload.opening_balance; await DB.insert("suppliers", payload); }
+        else { await DB.update("suppliers", c.id, payload); if ((Number(c.opening_balance) || 0) !== payload.opening_balance) await Ledger.recompute("supplier", c.id); }
         UI.toast("تم الحفظ"); ov.remove(); await load();
       } catch (err) { UI.toast(err.message, true); }
     };
