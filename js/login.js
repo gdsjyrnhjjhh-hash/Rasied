@@ -35,6 +35,19 @@
     var r = await client.auth.signInWithPassword({ email: emailOf(phone), password: pass });
     if (r.error) throw new Error("رقم الهاتف أو كلمة المرور غير صحيحة");
     try { await client.rpc("record_login", { p_ua: navigator.userAgent }); } catch (e) {}
+    // جهّز كاش الشيل (القائمة/الاسم/الشركة) ليظهر الشيل كاملًا فور فتح أول صفحة
+    try {
+      var uid = r.data.user.id;
+      var pr = await client.from("profiles").select("*").eq("id", uid).maybeSingle();
+      if (pr.data && pr.data.status === "active") {
+        var co = await client.from("companies").select("name").eq("id", pr.data.company_id).maybeSingle();
+        localStorage.setItem("trading_shell_v1", JSON.stringify({
+          uid: uid, role: pr.data.role, company_role: pr.data.company_role,
+          permissions: pr.data.permissions || [], status: pr.data.status,
+          full_name: pr.data.full_name, brand: (co.data && co.data.name) || "نظام التجارة"
+        }));
+      }
+    } catch (e) {}
     location.replace("index.html");
   }
 

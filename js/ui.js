@@ -256,65 +256,66 @@
     return t ? t.label : k;
   }
 
-  async function init(active, opts) {
-    var app = document.getElementById("app");
-    if (!app) return null;
-    if (DB.fatal) {
-      app.innerHTML = html`<div class="login-wrap"><div class="card error">${DB.fatal}</div></div>`;
-      return null;
-    }
+  // ======================================================================
+  // الشيل الثابت (القائمة + الشريط العلوي)
+  // يُرسم فورًا عند تحميل ui.js من كاش محلي (قبل أي طلب شبكة)،
+  // ثم يُطابَق بصمت مع الجلسة الفعلية دون إعادة بناء الصفحة — فلا وميض ولا اختفاء.
+  // ======================================================================
+  var SHELL_KEY = "trading_shell_v1";
+  var NAVSCROLL_KEY = "trading_nav_scroll";
+  var shell = null; // { active, title, ctx, brand, sub, demo, pages, bound }
 
-    // السحابة: التحقق من الجلسة والملف الشخصي
-    var prof = null;
-    try { prof = await DB.ready(); } catch (e) {
-      app.innerHTML = html`<div class="login-wrap"><div class="card error">تعذّر الاتصال بالخادم: ${e.message || e}</div></div>`;
-      return null;
-    }
-    if (prof && prof.status === "suspended") {
-      app.innerHTML = html`<div class="login-wrap"><div class="card suspended-card">
-        <div class="susp-ic">${ICON.alert}</div>
-        <h2>الحساب موقوف</h2>
-        <p class="muted">تم إيقاف هذا الحساب مؤقتاً. لتفعيل النظام تواصل مع الإدارة.</p>
-        ${prof.status_note ? html`<div class="susp-note">${prof.status_note}</div>` : ""}
-        <button type="button" class="primary" id="susp-out">${ICON.logout}تسجيل الخروج</button>
-      </div></div>`;
-      document.getElementById("susp-out").onclick = function () { DB.logout(); };
-      return null;
-    }
+  // صفحات لها مفتاح قائمة/عنوان مختلف عن اسم الصفحة
+  var PAGE_BOOT = {
+    treasury: { active: "cash-registers", title: ["الخزينة", "حركات · تحويل · جرد النقدية"] },
+    banks: { title: ["البنوك", "حسابات · حركات · تحويل · ربط الشيكات"] },
+    cheques: { title: ["الشيكات", "واردة وصادرة · استحقاق · تحصيل وصرف"] },
+  };
+  var INVOICE_KINDS = {
+    sale: { page: "sales", title: ["فاتورة بيع جديدة", "فواتير البيع"] },
+    purchase: { page: "purchases", title: ["فاتورة شراء جديدة", "فواتير الشراء"] },
+    sale_return: { page: "returns", title: ["مرتجع بيع جديد", "مردودات البيع"] },
+    purchase_return: { page: "purchase-returns", title: ["مرتجع شراء جديد", "مردودات الشراء"] },
+  };
+
+  function readShellCache() {
+    try { return JSON.parse(localStorage.getItem(SHELL_KEY) || "null"); } catch (e) { return null; }
+  }
+  function writeShellCache(o) {
+    try { localStorage.setItem(SHELL_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function clearShellCache() {
+    try { localStorage.removeItem(SHELL_KEY); sessionStorage.removeItem(NAVSCROLL_KEY); } catch (e) {}
+  }
+
+  function isDemoMode() {
+    var cfg = window.APP_CONFIG || {};
+    return !(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY);
+  }
+
+  // يبني سياق الصلاحيات والقائمة من الملف الشخصي (حقيقي أو من الكاش)
+  function buildCtx(prof, pending) {
     var isAdmin = !!(prof && prof.role === "admin");
-    var NAVX = isAdmin ? NAV.concat([NAV_ADMIN]) : NAV;
-    if (active === "admin" && !isAdmin) { location.replace("index.html"); return null; }
-
-    // موظف الشركة: يرى فقط الصفحات المسموحة له (الرئيسية دائمًا مسموحة؛ الإعدادات وإدارة المستخدمين للمالك فقط)
     var isStaff = !!(prof && prof.company_role === "staff");
     var perms = (prof && Array.isArray(prof.permissions)) ? prof.permissions : [];
-    function allowed(key) { return !isStaff || key === "dashboard" || (key !== "settings" && key !== "staff" && perms.indexOf(key) !== -1); }
+    var navx = isAdmin ? NAV.concat([NAV_ADMIN]) : NAV;
+    function allowed(key) {
+      return !isStaff || key === "dashboard" || (key !== "settings" && key !== "staff" && perms.indexOf(key) !== -1);
+    }
     if (isStaff) {
-      NAVX = NAVX.map(function (g) { return { group: g.group, items: g.items.filter(function (it) { return allowed(it.key); }) }; })
+      navx = navx.map(function (g) { return { group: g.group, items: g.items.filter(function (it) { return allowed(it.key); }) }; })
         .filter(function (g) { return g.items.length; });
     }
+    return { prof: prof || null, pending: !!pending, isAdmin: isAdmin, isStaff: isStaff, navx: navx, allowed: allowed };
+  }
 
-    // ثيم محفوظ
-    try {
-      var savedTheme = localStorage.getItem("trading_theme");
-      var wantDark = savedTheme ? savedTheme === "dark" : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
-      document.documentElement.classList.toggle("dark", wantDark);
-    } catch (e) {}
-
-    var companyBrand = "نظام التجارة";
-    var companySub = DB.isDemo() ? "وضع تجريبي" : "متصل";
-    try { var co = DB.getCompany(); if (co && co.name) companyBrand = co.name; } catch (e) {}
-    if (!DB.isDemo()) companySub = "سحابة · متصل";
-
-    var title = (opts && opts.title) || TITLES[active] || [active, ""];
-    var crumbGroup = "";
-    NAVX.forEach(function (g) {
-      g.items.forEach(function (l) {
-        if (l.key === active) crumbGroup = g.group;
-      });
-    });
-
-    var navHtml = NAVX.map(function (g) {
+  function navHtmlFor(ctx, active) {
+    if (ctx.pending) {
+      var sk = "";
+      for (var i = 0; i < 9; i++) sk += '<div class="skel nav-skel"></div>';
+      return sk;
+    }
+    return ctx.navx.map(function (g) {
       return html`<div class="nav-group"><span>${g.group}</span></div>${g.items.map(function (l) {
         var ic = NAV_ICONS[l.key] || "•";
         return html`<a class="nav ${l.key === active ? "active" : ""}" href="${l.href}" data-nav="${l.key}" data-label="${l.label}"${l.key === active ? ' aria-current="page"' : ""}>
@@ -322,36 +323,95 @@
         </a>`;
       }).join("")}`;
     }).join("");
+  }
 
-    var quickLinks = [
-      { href: "sales.html", label: "فاتورة بيع جديدة", icon: ICON.sales },
-      { href: "purchases.html", label: "فاتورة شراء جديدة", icon: ICON.purchases },
-      { href: "payments.html", label: "سند قبض / صرف", icon: ICON.payments },
-      { href: "products.html", label: "إضافة صنف", icon: ICON.products },
-      { href: "reports.html", label: "التقارير المالية", icon: ICON.reports },
-    ];
+  function crumbHtmlFor(ctx, active, title) {
+    var grp = "";
+    ctx.navx.forEach(function (g) { g.items.forEach(function (l) { if (l.key === active) grp = g.group; }); });
+    return html`<a href="index.html" class="bc-link">الرئيسية</a>${grp ? html`<span class="bc-sep">/</span><span class="bc-group">${grp}</span>` : ""}<span class="bc-sep">/</span><span class="bc-current">${title[0]}</span>`;
+  }
 
-    document.documentElement.classList.add("motion-ready");
+  function userSlotHtml(ctx, brand, demo) {
+    var prof = ctx.prof;
+    var name = prof ? prof.full_name : (ctx.pending ? "" : "المدير العام");
+    var role = prof ? (ctx.isAdmin ? "مدير النظام" : "مستخدم") : (ctx.pending ? "" : "وضع تجريبي");
+    var letter = ((name || brand || "م") + "").trim().charAt(0);
+    return html`${demo ? html`<span class="badge demo">Demo</span>` : html`<span class="badge ok">Live</span>`}
+      <div class="muted clock" id="clock"></div>
+      <div class="user-chip"><div class="av">${letter}</div><div class="un">${name}<small>${role}</small></div></div>
+      ${prof ? html`<button type="button" class="ghost" data-action="logout" title="تسجيل الخروج">${ICON.logout}</button>` : ""}`;
+  }
+
+  function buildPages(ctx) {
+    var out = [];
+    ctx.navx.forEach(function (g) {
+      g.items.forEach(function (l) {
+        out.push({ key: l.key, href: l.href, label: l.label, group: g.group, icon: NAV_ICONS[l.key] || "•" });
+      });
+    });
+    return out;
+  }
+
+  var QUICK_LINKS = [
+    { href: "sales.html", label: "فاتورة بيع جديدة", icon: ICON.sales },
+    { href: "purchases.html", label: "فاتورة شراء جديدة", icon: ICON.purchases },
+    { href: "payments.html", label: "سند قبض / صرف", icon: ICON.payments },
+    { href: "products.html", label: "إضافة صنف", icon: ICON.products },
+    { href: "reports.html", label: "التقارير المالية", icon: ICON.reports },
+  ];
+
+  function saveNavScroll() {
+    try {
+      var nav = document.getElementById("sidebar-nav");
+      if (nav) sessionStorage.setItem(NAVSCROLL_KEY, String(nav.scrollTop));
+    } catch (e) {}
+  }
+  function restoreNavScroll() {
+    var nav = document.getElementById("sidebar-nav");
+    if (!nav) return;
+    var saved = null;
+    try { saved = sessionStorage.getItem(NAVSCROLL_KEY); } catch (e) {}
+    if (saved != null && saved !== "") {
+      nav.scrollTop = parseInt(saved, 10) || 0;
+    } else {
+      var act = nav.querySelector("a.nav.active");
+      if (act) nav.scrollTop = Math.max(0, act.offsetTop - nav.clientHeight / 2);
+    }
+  }
+
+  function applyTheme() {
+    try {
+      var savedTheme = localStorage.getItem("trading_theme");
+      var wantDark = savedTheme ? savedTheme === "dark" : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", wantDark);
+    } catch (e) {}
+  }
+
+  function renderShell(active, title, ctx, brand, sub, demo) {
+    var app = document.getElementById("app");
     var startCollapsed = false;
     try { startCollapsed = localStorage.getItem("trading_nav_collapsed") === "1"; } catch (e) {}
+    applyTheme();
+    document.documentElement.classList.add("motion-ready");
+
     app.innerHTML = html`
       <div class="nprogress" id="nprogress"></div>
       <div class="layout${startCollapsed ? " collapsed" : ""}" id="layout">
         <aside class="sidebar">
           <div class="brand">
             <div class="brand-icon">${ICON.building}</div>
-            <div class="brand-text">
-              <b>${companyBrand}</b>
-              <span>${companySub}</span>
+            <div class="brand-text" id="brand-text">
+              <b>${brand}</b>
+              <span>${sub}</span>
             </div>
           </div>
           <div class="sidebar-search-wrap">
             ${ICON.search}
             <input class="menu-search" id="menu-search" type="search" placeholder="بحث في القائمة…" autocomplete="off" />
           </div>
-          <nav class="sidebar-nav" id="sidebar-nav">${navHtml}</nav>
+          <nav class="sidebar-nav" id="sidebar-nav">${navHtmlFor(ctx, active)}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 21</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 22</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>
@@ -359,14 +419,9 @@
           <header class="topbar">
             <button class="menu-btn" data-action="toggle-nav" aria-label="القائمة">${ICON.menu}</button>
             <div class="topbar-title">
-              <div class="breadcrumb">
-                <a href="index.html" class="bc-link">الرئيسية</a>
-                ${crumbGroup ? html`<span class="bc-sep">/</span><span class="bc-group">${crumbGroup}</span>` : ""}
-                <span class="bc-sep">/</span>
-                <span class="bc-current">${title[0]}</span>
-              </div>
-              <h1>${title[0]}</h1>
-              <p class="sub">${title[1]}</p>
+              <div class="breadcrumb" id="breadcrumb">${crumbHtmlFor(ctx, active, title)}</div>
+              <h1 id="page-h1">${title[0]}</h1>
+              <p class="sub" id="page-sub">${title[1]}</p>
             </div>
             <div class="topbar-end">
               <button type="button" class="top-search" data-action="focus-search" title="بحث (Ctrl+K)">${ICON.search}<span>ابحث أو انتقل إلى…</span><span class="kbd">Ctrl K</span></button>
@@ -374,18 +429,15 @@
               <div class="quick-wrap">
                 <button type="button" class="primary small" data-action="toggle-quick">${ICON.plus}<span>إجراء سريع</span></button>
                 <div class="quick-menu" id="quick-menu" hidden>
-                  ${quickLinks.map(function (q) {
+                  ${QUICK_LINKS.map(function (q) {
                     return html`<a href="${q.href}" class="quick-item">${q.icon}${q.label}</a>`;
                   }).join("")}
                 </div>
               </div>
-              ${DB.isDemo() ? html`<span class="badge demo">Demo</span>` : html`<span class="badge ok">Live</span>`}
-              <div class="muted clock" id="clock"></div>
-              <div class="user-chip"><div class="av">${((prof && prof.full_name) || companyBrand || "م").trim().charAt(0)}</div><div class="un">${prof ? prof.full_name : "المدير العام"}<small>${prof ? (isAdmin ? "مدير النظام" : "مستخدم") : "وضع تجريبي"}</small></div></div>
-              ${prof ? html`<button type="button" class="ghost" data-action="logout" title="تسجيل الخروج">${ICON.logout}</button>` : ""}
+              <div class="user-slot" id="user-slot">${userSlotHtml(ctx, brand, demo)}</div>
             </div>
           </header>
-          <main class="content anim-stagger" id="page"></main>
+          <main class="content" id="page"><div class="page-skel" aria-hidden="true"><div class="skel" style="height:34px;width:220px"></div><div class="skel" style="height:96px;margin-top:18px"></div><div class="skel" style="height:260px;margin-top:14px"></div></div></main>
         </div>
       </div>
       <div class="cmd-overlay" id="cmd-overlay" hidden>
@@ -396,50 +448,115 @@
         </div>
       </div>`;
 
-    // شريط التقدم عند مغادرة الصفحة
-    function startProgress() {
-      var bar = document.getElementById("nprogress");
-      if (!bar) return;
-      bar.classList.add("active");
-      bar.style.width = "0%";
-      requestAnimationFrame(function () { bar.style.width = "70%"; });
-    }
-    function pageLeave(href) {
-      startProgress();
-      var content = document.getElementById("page");
-      var main = document.querySelector(".main");
-      if (content) content.classList.add("page-leave");
-      if (main) main.classList.add("page-leave-soft");
-      setTimeout(function () { location.href = href; }, 180);
-    }
+    shell = { active: active, title: title, ctx: ctx, brand: brand, sub: sub, demo: demo, pages: buildPages(ctx), bound: false };
+    syncThemeIcon();
+    tickClock();
+    restoreNavScroll();
+    bindShell();
+  }
 
-    // اعتراض روابط التنقل للانتقال السلس
-    app.querySelectorAll("a[href]").forEach(function (a) {
-      var href = a.getAttribute("href") || "";
-      if (!href || href.indexOf("#") === 0 || href.indexOf("http") === 0) return;
-      if (!/\.html/.test(href)) return;
-      a.addEventListener("click", function (e) {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        if (a.closest(".sidebar")) {
-          document.getElementById("layout").classList.remove("nav-open");
-        }
-        pageLeave(href);
-      });
+  function syncThemeIcon() {
+    var tb = document.getElementById("theme-btn");
+    if (tb) tb.innerHTML = document.documentElement.classList.contains("dark") ? ICON.sun : ICON.moon;
+  }
+  function tickClock() {
+    var el = document.getElementById("clock");
+    if (!el) return;
+    var now = new Date();
+    el.innerHTML = "<b>" + now.toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }) + "</b>" +
+      now.toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // مطابقة الشيل مع الجلسة الفعلية: يحدّث الأجزاء المتغيرة فقط (القائمة/الاسم/الشركة) ولا يمسّ الباقي
+  function reconcileShell(ctx, brand, sub, demo) {
+    if (!shell) return;
+    var navSig = function (c) { return JSON.stringify([c.pending, c.navx.map(function (g) { return g.items.map(function (i) { return i.key; }); })]); };
+    var nav = document.getElementById("sidebar-nav");
+    if (nav && navSig(shell.ctx) !== navSig(ctx)) {
+      var st = nav.scrollTop;
+      nav.innerHTML = navHtmlFor(ctx, shell.active);
+      nav.scrollTop = st;
+      var crumb = document.getElementById("breadcrumb");
+      if (crumb) crumb.innerHTML = crumbHtmlFor(ctx, shell.active, shell.title);
+      var q = document.getElementById("menu-search");
+      if (q && q.value) q.dispatchEvent(new Event("input"));
+    }
+    var bt = document.getElementById("brand-text");
+    if (bt && (shell.brand !== brand || shell.sub !== sub)) bt.innerHTML = "<b>" + brand + "</b><span>" + sub + "</span>";
+    var us = document.getElementById("user-slot");
+    var uSig = function (c, b) { return JSON.stringify([c.pending, c.prof && c.prof.full_name, c.isAdmin, !!c.prof, b]); };
+    if (us && uSig(shell.ctx, shell.brand) !== uSig(ctx, brand)) {
+      us.innerHTML = userSlotHtml(ctx, brand, demo);
+      tickClock();
+    }
+    shell.ctx = ctx; shell.brand = brand; shell.sub = sub; shell.demo = demo; shell.pages = buildPages(ctx);
+  }
+
+  function setPageTitle(title) {
+    if (!shell || (shell.title[0] === title[0] && shell.title[1] === title[1])) return;
+    shell.title = title;
+    var h = document.getElementById("page-h1"), s = document.getElementById("page-sub"), bc = document.getElementById("breadcrumb");
+    if (h) h.textContent = title[0];
+    if (s) s.textContent = title[1];
+    if (bc) bc.innerHTML = crumbHtmlFor(shell.ctx, shell.active, title);
+  }
+
+  // ---- ربط الأحداث (مرة واحدة فقط) ----
+  function startProgress() {
+    var bar = document.getElementById("nprogress");
+    if (!bar) return;
+    bar.classList.add("active");
+    bar.style.width = "0%";
+    requestAnimationFrame(function () { bar.style.width = "70%"; });
+  }
+  function go(href) { saveNavScroll(); startProgress(); location.href = href; }
+
+  function openCmd() {
+    var ov = document.getElementById("cmd-overlay");
+    var inp = document.getElementById("cmd-input");
+    if (!ov || !inp) return;
+    ov.hidden = false;
+    inp.value = "";
+    renderCmd("");
+    setTimeout(function () { inp.focus(); }, 30);
+  }
+  function closeCmd() {
+    var ov = document.getElementById("cmd-overlay");
+    if (ov) ov.hidden = true;
+  }
+  function renderCmd(q) {
+    q = (q || "").toLowerCase();
+    var list = (shell ? shell.pages : []).filter(function (p) {
+      return !q || p.label.toLowerCase().indexOf(q) !== -1 || p.group.toLowerCase().indexOf(q) !== -1;
     });
+    var box = document.getElementById("cmd-results");
+    box.innerHTML = list.length === 0
+      ? "<div class='empty'>لا نتائج</div>"
+      : list.map(function (p, i) {
+          return "<button type='button' class='cmd-row" + (i === 0 ? " on" : "") + "' data-href='" + p.href + "'>" +
+            "<span class='nav-ic'>" + p.icon + "</span><span>" + p.label + "</span>" +
+            "<span class='muted cmd-group'>" + p.group + "</span></button>";
+        }).join("");
+    box.querySelectorAll(".cmd-row").forEach(function (btn) {
+      btn.addEventListener("click", function () { go(btn.getAttribute("data-href")); });
+    });
+  }
+
+  function bindShell() {
+    if (!shell || shell.bound) return;
+    shell.bound = true;
 
     // بحث القائمة الجانبية
     var ms = document.getElementById("menu-search");
     if (ms) {
       ms.addEventListener("input", function () {
         var q = ms.value.trim().toLowerCase();
+        var app = document.getElementById("app");
         app.querySelectorAll(".sidebar a.nav").forEach(function (a) {
-          var show = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
-          a.style.display = show ? "" : "none";
+          a.style.display = !q || a.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
         });
         app.querySelectorAll(".sidebar .nav-group").forEach(function (g) {
-          var next = g.nextElementSibling;
-          var any = false;
+          var next = g.nextElementSibling, any = false;
           while (next && next.classList.contains("nav")) {
             if (next.style.display !== "none") any = true;
             next = next.nextElementSibling;
@@ -449,60 +566,25 @@
       });
     }
 
-    // لوحة الأوامر Ctrl+K
-    var allPages = [];
-    NAVX.forEach(function (g) {
-      g.items.forEach(function (l) {
-        allPages.push({ key: l.key, href: l.href, label: l.label, group: g.group, icon: NAV_ICONS[l.key] || "•" });
-      });
-    });
-
-    function openCmd() {
-      var ov = document.getElementById("cmd-overlay");
-      var inp = document.getElementById("cmd-input");
-      ov.hidden = false;
-      inp.value = "";
-      renderCmd("");
-      setTimeout(function () { inp.focus(); }, 30);
-    }
-    function closeCmd() {
-      document.getElementById("cmd-overlay").hidden = true;
-    }
-    function renderCmd(q) {
-      q = (q || "").toLowerCase();
-      var list = allPages.filter(function (p) {
-        return !q || p.label.toLowerCase().indexOf(q) !== -1 || p.group.toLowerCase().indexOf(q) !== -1;
-      });
-      var box = document.getElementById("cmd-results");
-      box.innerHTML = list.length === 0
-        ? "<div class='empty'>لا نتائج</div>"
-        : list.map(function (p, i) {
-            return "<button type='button' class='cmd-row" + (i === 0 ? " on" : "") + "' data-href='" + p.href + "'>" +
-              "<span class='nav-ic'>" + p.icon + "</span><span>" + p.label + "</span>" +
-              "<span class='muted cmd-group'>" + p.group + "</span></button>";
-          }).join("");
-      box.querySelectorAll(".cmd-row").forEach(function (btn) {
-        btn.addEventListener("click", function () { pageLeave(btn.getAttribute("data-href")); });
-      });
-    }
-    document.getElementById("cmd-input").addEventListener("input", function (e) {
-      renderCmd(e.target.value);
-    });
-    document.getElementById("cmd-input").addEventListener("keydown", function (e) {
+    var ci = document.getElementById("cmd-input");
+    ci.addEventListener("input", function (e) { renderCmd(e.target.value); });
+    ci.addEventListener("keydown", function (e) {
       var rows = Array.prototype.slice.call(document.querySelectorAll(".cmd-row"));
       var idx = rows.findIndex(function (r) { return r.classList.contains("on"); });
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        if (!rows.length) return;
         if (idx >= 0) rows[idx].classList.remove("on");
         rows[Math.min(idx + 1, rows.length - 1)].classList.add("on");
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        if (!rows.length) return;
         if (idx >= 0) rows[idx].classList.remove("on");
         rows[Math.max(idx - 1, 0)].classList.add("on");
       } else if (e.key === "Enter") {
         e.preventDefault();
         var on = document.querySelector(".cmd-row.on");
-        if (on) pageLeave(on.getAttribute("data-href"));
+        if (on) go(on.getAttribute("data-href"));
       } else if (e.key === "Escape") {
         closeCmd();
       }
@@ -524,6 +606,20 @@
     });
 
     document.addEventListener("click", function (e) {
+      // التنقل بين الصفحات: انتقال أصلي فوري (بدون تأخير أو إخفاء للمحتوى) + حفظ موضع تمرير القائمة
+      var a = e.target.closest && e.target.closest("a[href]");
+      if (a && !e.defaultPrevented && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) && e.button === 0) {
+        var href = a.getAttribute("href") || "";
+        if (href && href.charAt(0) !== "#" && href.indexOf("http") !== 0 && /\.html/.test(href) && !a.target) {
+          saveNavScroll();
+          startProgress();
+          if (a.closest(".sidebar")) {
+            var lay = document.getElementById("layout");
+            if (lay) lay.classList.remove("nav-open");
+          }
+        }
+      }
+
       var t = e.target.closest("[data-action]");
       if (!t) {
         var qm = document.getElementById("quick-menu");
@@ -534,15 +630,13 @@
       if (act === "toggle-nav") {
         document.getElementById("layout").classList.toggle("nav-open");
       } else if (act === "toggle-collapse") {
-        var lay = document.getElementById("layout");
-        lay.classList.toggle("collapsed");
-        try { localStorage.setItem("trading_nav_collapsed", lay.classList.contains("collapsed") ? "1" : "0"); } catch (e) {}
+        var lay2 = document.getElementById("layout");
+        lay2.classList.toggle("collapsed");
+        try { localStorage.setItem("trading_nav_collapsed", lay2.classList.contains("collapsed") ? "1" : "0"); } catch (er) {}
       } else if (act === "toggle-theme") {
         document.documentElement.classList.toggle("dark");
         syncThemeIcon();
-        try {
-          localStorage.setItem("trading_theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
-        } catch (e) {}
+        try { localStorage.setItem("trading_theme", document.documentElement.classList.contains("dark") ? "dark" : "light"); } catch (er) {}
         UI.toast(document.documentElement.classList.contains("dark") ? "الوضع الداكن" : "الوضع الفاتح");
       } else if (act === "focus-search" || act === "open-cmd") {
         openCmd();
@@ -554,35 +648,114 @@
       }
     });
 
-    function syncThemeIcon() {
-      var tb = document.getElementById("theme-btn");
-      if (tb) tb.innerHTML = document.documentElement.classList.contains("dark") ? ICON.sun : ICON.moon;
-    }
-    syncThemeIcon();
+    setInterval(tickClock, 30000);
+    window.addEventListener("pagehide", saveNavScroll);
+    // العودة بزر "رجوع" (bfcache): أعد شريط التقدم لوضعه
+    window.addEventListener("pageshow", function (e) {
+      if (!e.persisted) return;
+      var bar = document.getElementById("nprogress");
+      if (bar) { bar.classList.remove("active"); bar.style.width = "0%"; }
+    });
+  }
 
-    function tick() {
-      var el = document.getElementById("clock");
-      if (!el) return;
-      var now = new Date();
-      el.innerHTML = "<b>" + now.toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }) + "</b>" +
-        now.toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
+  // يُستدعى تلقائيًا فور تحميل ui.js (قبل DB وباقي السكربتات الثقيلة) لإظهار الشيل في أول رسم
+  function boot() {
+    var app = document.getElementById("app");
+    var key = document.body && document.body.getAttribute("data-page");
+    if (!app || !key || shell) return;
+    var override = PAGE_BOOT[key] || {};
+    var title = override.title;
+    var active = override.active || key;
+    if (key === "invoice") {
+      var k = INVOICE_KINDS[new URLSearchParams(location.search).get("kind")] || INVOICE_KINDS.sale;
+      active = k.page; title = k.title;
     }
-    tick();
-    setInterval(tick, 30000);
+    title = title || TITLES[active] || [active, ""];
+
+    var demo = isDemoMode();
+    var cache = demo ? null : readShellCache();
+    var ctx = demo ? buildCtx(null, false) : (cache ? buildCtx(cache, false) : buildCtx(null, true));
+    var brand = (cache && cache.brand) || "نظام التجارة";
+    var sub = demo ? "وضع تجريبي" : "سحابة · متصل";
+    renderShell(active, title, ctx, brand, sub, demo);
+  }
+
+  async function init(active, opts) {
+    var app = document.getElementById("app");
+    if (!app) return null;
+    if (DB.fatal) {
+      app.innerHTML = html`<div class="login-wrap"><div class="card error">${DB.fatal}</div></div>`;
+      return null;
+    }
+
+    // الشيل يكون مرسومًا مسبقًا؛ وإلا (صفحة بلا data-page) نرسمه الآن
+    if (!shell) {
+      var demo0 = DB.isDemo();
+      var c0 = demo0 ? null : readShellCache();
+      renderShell(active, (opts && opts.title) || TITLES[active] || [active, ""],
+        demo0 ? buildCtx(null, false) : (c0 ? buildCtx(c0, false) : buildCtx(null, true)),
+        (c0 && c0.brand) || "نظام التجارة", demo0 ? "وضع تجريبي" : "سحابة · متصل", demo0);
+    } else if (shell.active !== active) {
+      shell.active = active; // مفتاح مختلف عن المتوقع: صحّح التمييز في القائمة
+      var nv = document.getElementById("sidebar-nav");
+      if (nv) {
+        nv.querySelectorAll("a.nav").forEach(function (a) {
+          var on = a.getAttribute("data-nav") === active;
+          a.classList.toggle("active", on);
+          if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+        });
+      }
+    }
+    if (opts && opts.title) setPageTitle(opts.title);
+
+    // السحابة: التحقق من الجلسة والملف الشخصي
+    var prof = null;
+    try { prof = await DB.ready(); } catch (e) {
+      app.innerHTML = html`<div class="login-wrap"><div class="card error">تعذّر الاتصال بالخادم: ${e.message || e}</div></div>`;
+      return null;
+    }
+    if (prof && prof.status === "suspended") {
+      clearShellCache();
+      app.innerHTML = html`<div class="login-wrap"><div class="card suspended-card">
+        <div class="susp-ic">${ICON.alert}</div>
+        <h2>الحساب موقوف</h2>
+        <p class="muted">تم إيقاف هذا الحساب مؤقتاً. لتفعيل النظام تواصل مع الإدارة.</p>
+        ${prof.status_note ? html`<div class="susp-note">${prof.status_note}</div>` : ""}
+        <button type="button" class="primary" id="susp-out">${ICON.logout}تسجيل الخروج</button>
+      </div></div>`;
+      document.getElementById("susp-out").onclick = function () { DB.logout(); };
+      return null;
+    }
+
+    var ctx = buildCtx(prof, false);
+    if (active === "admin" && !ctx.isAdmin) { location.replace("index.html"); return null; }
+
+    var companyBrand = "نظام التجارة";
+    try { var co = DB.getCompany(); if (co && co.name) companyBrand = co.name; } catch (e) {}
+    var companySub = DB.isDemo() ? "وضع تجريبي" : "سحابة · متصل";
+
+    // حدّث الكاش للتحميل القادم، وطابِق الشيل بصمت
+    if (prof) {
+      writeShellCache({
+        uid: prof.id, role: prof.role, company_role: prof.company_role,
+        permissions: prof.permissions || [], status: prof.status,
+        full_name: prof.full_name, brand: companyBrand,
+      });
+    }
+    reconcileShell(ctx, companyBrand, companySub, DB.isDemo());
 
     var pageEl = document.getElementById("page");
-    if (!allowed(active) || (active === "staff" && isStaff)) {
+    if (!ctx.allowed(active) || (active === "staff" && ctx.isStaff)) {
       pageEl.innerHTML = '<div class="card empty" style="padding:48px 20px"><h3 style="margin:0 0 8px">غير مصرّح لك بهذه الصفحة</h3><p class="muted" style="margin:0">تواصل مع مالك الشركة لإضافة الصلاحية.</p></div>';
       return null;
     }
-    requestAnimationFrame(function () {
-      if (!pageEl) return;
-      pageEl.classList.remove("anim-stagger");
-      void pageEl.offsetWidth;
-      pageEl.classList.add("anim-stagger");
-    });
+    // الهيكل العظمي يبقى حتى تكتب الصفحة محتواها؛ ثم يظهر المحتوى بتلاشٍ هادئ
+    pageEl.classList.add("anim-stagger");
     return pageEl;
   }
+
+  // الرسم الفوري للشيل
+  boot();
 
   window.UI = {
     init: init,
@@ -598,6 +771,7 @@
     printHTML: printHTML,
     ICON: ICON,
     svg: svg,
+    clearShellCache: clearShellCache,
   };
 })();
 

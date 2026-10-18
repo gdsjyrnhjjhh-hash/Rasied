@@ -605,10 +605,7 @@ tr:has(> td.empty):hover { background: transparent; }
 @keyframes draw { to { stroke-dashoffset: 0 } }
 @keyframes shimmer { to { background-position: -200% 0 } }
 @keyframes pulse { 0%,100% { box-shadow: 0 0 0 4px rgba(52,211,153,.3) } 50% { box-shadow: 0 0 0 8px rgba(52,211,153,0) } }
-.anim-stagger > * { animation: rise .5s var(--ease) both; }
-.anim-stagger > *:nth-child(2) { animation-delay: .05s } .anim-stagger > *:nth-child(3) { animation-delay: .1s }
-.anim-stagger > *:nth-child(4) { animation-delay: .15s } .anim-stagger > *:nth-child(5) { animation-delay: .2s }
-.anim-stagger > *:nth-child(6) { animation-delay: .25s } .anim-stagger > *:nth-child(n+7) { animation-delay: .3s }
+.anim-stagger > * { animation: fade .22s ease both; }
 .page-leave { opacity: 0; transform: translateY(-4px); transition: all .18s ease; }
 
 /* سكرول */
@@ -864,3 +861,24 @@ html.dark mark{background:#854d0e}
 .tre-table td[dir=ltr]{white-space:nowrap}
 .reg-card.sel{outline:2px solid var(--primary,#2a49d6)}
 .badge.danger{background:#fee2e2;color:#991b1b}
+
+
+/* ======================================================================
+   ثبات الشيل (v22): القائمة والشريط العلوي لا يختفيان ولا يتحركان أثناء التنقل
+   ====================================================================== */
+/* انتقال سلس بين الصفحات (Chrome/Edge/Safari الحديثة): تبقى القائمة والشريط ثابتين كما هما ويتبدّل المحتوى فقط */
+@view-transition { navigation: auto; }
+.sidebar { view-transition-name: app-sidebar; }
+.topbar { view-transition-name: app-topbar; }
+::view-transition-group(app-sidebar), ::view-transition-group(app-topbar) { animation: none; }
+::view-transition-old(app-sidebar), ::view-transition-old(app-topbar) { display: none; }
+::view-transition-new(app-sidebar), ::view-transition-new(app-topbar) { animation: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .14s; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* هيكل عظمي للقائمة عند أول تحميل (قبل وصول بيانات المستخدم) */
+.nav-skel { height: 38px; margin: 6px 0; border-radius: 10px; background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 75%); background-size: 200% 100%; }
+.page-skel { padding-top: 4px; }
+.user-slot { display: contents; }

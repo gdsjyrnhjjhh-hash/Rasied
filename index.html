@@ -6,19 +6,20 @@
     <meta name="theme-color" content="#1e3a8a" />
     <title>نظام الشركة التجارية</title>
     <link rel="icon" href="favicon.ico" sizes="any" />
-    <link rel="stylesheet" href="css/style.css?v=21" />
+    <link rel="stylesheet" href="css/style.css?v=22" />
   </head>
-  <body>
+  <body data-page="dashboard">
     <div id="app"><div class="empty">جارٍ التحميل…</div></div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-    <script src="js/config.js?v=21"></script>
-    <script src="js/db.js?v=21"></script>
-    <script src="js/ledger.js?v=21"></script>
-    <script src="js/invoices.js?v=21"></script>
-    <script src="js/cheques.js?v=21"></script>
-    <script src="js/invoice-list.js?v=21"></script>
-    <script src="js/ui.js?v=21"></script>
-    <script src="js/motion.js?v=21"></script>
-    <script src="js/pages/dashboard.js?v=21"></script>
+    <!-- الشيل: config + ui.js يرسمان القائمة فورًا في أول إطار، والباقي defer حتى لا يحجب الرسم -->
+    <script src="js/config.js?v=22"></script>
+    <script src="js/ui.js?v=22"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script defer src="js/db.js?v=22"></script>
+    <script defer src="js/ledger.js?v=22"></script>
+    <script defer src="js/invoices.js?v=22"></script>
+    <script defer src="js/cheques.js?v=22"></script>
+    <script defer src="js/invoice-list.js?v=22"></script>
+    <script defer src="js/motion.js?v=22"></script>
+    <script defer src="js/pages/dashboard.js?v=22"></script>
   </body>
 </html>

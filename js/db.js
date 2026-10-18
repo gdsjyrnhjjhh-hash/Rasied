@@ -193,9 +193,13 @@
 
   async function ensureSeed() {
     // شركة جديدة: دليل حسابات أساسي + مخزن + خزينة (مرة واحدة)
+    // علامة محلية تتجاوز الفحص بعد أول نجاح، لتوفير طلب شبكة في كل تنقّل بين الصفحات
+    var seedFlag = "trading_seeded_" + profile.company_id;
+    try { if (localStorage.getItem(seedFlag) === "1") return; } catch (e) {}
     var c = await client.from("records").select("id", { count: "exact", head: true })
       .eq("company_id", profile.company_id).eq("tbl", "accounts");
-    if (c.error || c.count > 0) return;
+    if (c.error) return;
+    if (c.count > 0) { try { localStorage.setItem(seedFlag, "1"); } catch (e) {} return; }
     var now = new Date().toISOString();
     var rows = SEED.accounts.map(function (a) {
       return { company_id: profile.company_id, id: a.id, tbl: "accounts", data: Object.assign({}, a, { created_at: now }), created_at: now };
@@ -204,6 +208,7 @@
     rows.push({ company_id: profile.company_id, id: uid(), tbl: "cash_registers", data: { name: "الخزينة الرئيسية", balance: 0, location: "", created_at: now }, created_at: now });
     rows.forEach(function (r) { r.data.id = r.id; });
     await client.from("records").insert(rows);
+    try { localStorage.setItem(seedFlag, "1"); } catch (e) {}
   }
 
   // يُستدعى من UI.init: يتحقق من الجلسة ويحمّل الملف الشخصي والشركة
@@ -229,6 +234,7 @@
   }
 
   async function logout() {
+    try { localStorage.removeItem("trading_shell_v1"); sessionStorage.removeItem("trading_nav_scroll"); } catch (e) {}
     if (client) await client.auth.signOut();
     location.replace("login.html");
   }
