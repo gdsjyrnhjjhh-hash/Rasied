@@ -12,6 +12,11 @@
   }
 
   // أرقام لاتينية موحّدة في كل النظام (مناسبة للمحاسبة)
+  // رمز عملة الشركة من الإعدادات (الافتراضي ج.م) — للطباعة والتصدير والملخصات
+  function currency() {
+    try { var c = DB.getCompany(); return (c && c.currency) || ""; } catch (e) { return ""; }
+  }
+  function moneyC(n) { var c = currency(); var t = money(n); return c && t !== "—" ? t + " " + c : t; }
   function money(n) {
     if (n == null || isNaN(n)) return "—";
     var t = Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -58,6 +63,7 @@
     suppliers: svg('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01"/>'),
     products: svg('<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>'),
     warehouses: svg('<path d="M3 9.5 12 3l9 6.5V21H3z"/><path d="M9 21v-7h6v7"/>'),
+    "stock-report": svg('<path d="M3 3v18h18"/><path d="M7 16V9M12 16V5M17 16v-4"/>'),
     stocktake: svg('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>'),
     transfers: svg('<path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/>'),
     cheques: svg('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 15l2 2 3-4"/>'),
@@ -123,6 +129,7 @@
       items: [
         { key: "products", href: "products.html", label: "الأصناف" },
         { key: "warehouses", href: "warehouses.html", label: "المخازن" },
+        { key: "stock-report", href: "stock-report.html", label: "حركة المخزون" },
         { key: "stocktake", href: "stocktake.html", label: "الجرد المخزني" },
         { key: "transfers", href: "transfers.html", label: "تحويلات المخازن" },
         { key: "cash-registers", href: "cash-registers.html", label: "الخزائن" },
@@ -172,6 +179,7 @@
     suppliers: ["الموردين", "حسابات الموردين والأرصدة"],
     products: ["الأصناف", "المخزون والأسعار"],
     warehouses: ["المخازن", "إدارة مواقع التخزين"],
+    "stock-report": ["حركة المخزون", "رصيد أول المدة والمشتريات والمبيعات والمرتجعات والجرد"],
     stocktake: ["الجرد المخزني", "تسوية الكميات الفعلية"],
     transfers: ["تحويلات المخازن", "نقل أصناف بين المخازن"],
     payments: ["سندات قبض وصرف", "تحصيل من العملاء وسداد للموردين"],
@@ -426,6 +434,7 @@
             <div class="topbar-end">
               <button type="button" class="top-search" data-action="focus-search" title="بحث (Ctrl+K)">${ICON.search}<span>ابحث أو انتقل إلى…</span><span class="kbd">Ctrl K</span></button>
               <button type="button" class="ghost install-btn" data-action="install-app" id="install-btn" title="تثبيت التطبيق على جهازك" aria-label="تثبيت التطبيق" hidden>${ICON.download}</button>
+              <button type="button" class="ghost lang-btn" data-action="toggle-lang" title="English / عربي" id="lang-btn">${window.I18n && I18n.isEn() ? "عربي" : "EN"}</button>
               <button type="button" class="ghost theme-btn" data-action="toggle-theme" title="ثيم داكن/فاتح" id="theme-btn">${ICON.moon}</button>
               <div class="quick-wrap">
                 <button type="button" class="primary small" data-action="toggle-quick">${ICON.plus}<span>إجراء سريع</span></button>
@@ -534,6 +543,7 @@
     suppliers: "js/pages/suppliers.js",
     products: "js/pages/products.js",
     warehouses: "js/pages/warehouses.js",
+    "stock-report": "js/pages/stock-report.js",
     stocktake: "js/pages/stocktake.js",
     transfers: "js/pages/transfers.js",
     payments: "js/pages/payments.js",
@@ -839,6 +849,8 @@
         var lay2 = document.getElementById("layout");
         lay2.classList.toggle("collapsed");
         try { localStorage.setItem("trading_nav_collapsed", lay2.classList.contains("collapsed") ? "1" : "0"); } catch (er) {}
+      } else if (act === "toggle-lang") {
+        if (window.I18n) I18n.toggle();
       } else if (act === "toggle-theme") {
         document.documentElement.classList.toggle("dark");
         syncThemeIcon();
@@ -985,6 +997,8 @@
     init: init,
     html: html,
     money: money,
+    currency: currency,
+    moneyC: moneyC,
     num: num,
     compact: compact,
     fmtDate: fmtDate,

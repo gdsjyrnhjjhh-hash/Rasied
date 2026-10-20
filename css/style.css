@@ -1032,3 +1032,40 @@ html.dark mark{background:#854d0e}
 .pwa-banner-actions .pwa-yes { background: var(--primary); color: #fff; }
 .pwa-banner-actions .pwa-no { background: transparent; color: var(--muted); padding-block: 3px; font-weight: 500; }
 @media (display-mode: standalone) { .pwa-banner { display: none !important; } }
+
+/* ===== v27 — كشوف الحساب (آلية رولكس بألوان رصيد) ===== */
+.stm-filters { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.stm-filters .field { margin: 0; min-width: 170px; }
+.stm-filters .field.grow { flex: 1 1 260px; }
+.stm-sumbar { display: flex; gap: 12px; flex-wrap: wrap; }
+.stm-chip { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xs); font-size: 13px; color: var(--text-2); }
+.stm-chip b { font-size: 15px; color: var(--primary); }
+.stm-chip.warn b { color: var(--warning); } .stm-chip.err b { color: var(--error); }
+.stm-list td.c, .stm-list th.c, .stm-table td.c, .stm-table th.c { text-align: center; }
+.stm-list tbody tr[data-id] { cursor: pointer; }
+.stm-list tbody tr[data-id]:hover td { background: var(--primary-soft); }
+.dr { color: var(--error); font-weight: 700; } .cr { color: var(--success); font-weight: 700; }
+.badge.info { background: var(--primary-soft); color: var(--primary); }
+.stm-overlay { z-index: 100; align-items: start; overflow: auto; }
+.stm-box { width: min(980px, 100%); margin: 20px auto; background: var(--surface); border-radius: 18px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); padding: 0; overflow: hidden; }
+.stm-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: linear-gradient(135deg, #182763, #2a49d6); color: #fff; }
+.stm-head h3 { margin: 0; font-size: 16px; color: #fff; }
+.stm-head .ghost { color: #fff; border-color: rgba(255,255,255,.4); background: transparent; }
+.stm-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.stm-toolbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.stm-toolbar input[type=date] { min-height: 34px; padding: 4px 8px; }
+.stm-toolbar .sp { flex: 1; }
+.stm-pdf { background: #fdecea; color: #b3261e; border-color: #f5c6c2; } .stm-xls { background: #e7f6ee; color: #1b7a4b; border-color: #bfe5cf; } .stm-prn { background: var(--primary-soft); color: var(--primary); }
+.stm-warn { margin: 12px 20px 0; padding: 10px 14px; border-radius: 12px; background: var(--warning-soft); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 13px; }
+.stm-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; padding: 16px 20px 6px; }
+.stm-summary .box { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; text-align: center; background: var(--surface); }
+.stm-summary small { display: block; font-size: 11.5px; color: var(--text-2); } .stm-summary b { font-size: 16px; }
+.stm-summary .debit b { color: var(--error); } .stm-summary .credit b { color: var(--success); }
+.stm-summary .final { background: linear-gradient(135deg, #182763, #2a49d6); border-color: transparent; } .stm-summary .final small { color: #c9d3f5; } .stm-summary .final b { color: #fff; }
+.stm-tablewrap { padding: 8px 20px 20px; overflow: auto; max-height: 60vh; }
+.stm-table { width: 100%; border-collapse: collapse; }
+.stm-table th { position: sticky; top: 0; z-index: 1; }
+.stm-table tr.open td { background: var(--surface-3); font-weight: 700; }
+.stm-table tr.tot td { background: var(--primary-soft); font-weight: 800; border-top: 2px solid var(--primary); }
+.stm-table td.nw { white-space: nowrap; }
+@media (max-width: 640px) { .stm-box { margin: 0; border-radius: 0; min-height: 100vh; } .stm-toolbar .sp { display: none; } }

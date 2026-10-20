@@ -234,7 +234,7 @@
     return "<h1>" + esc(company.name || "الشركة") + "</h1><h2>" + K.title + " رقم " + doc.number + "</h2>" +
       "<div class=meta><div><div>" + K.plabel + ": <b>" + esc(party ? party.name : "—") + "</b></div><div>التاريخ: " + esc(doc.date || "") + "</div>" +
       (doc.book_no ? "<div>رقم الدفتر: " + esc(doc.book_no) + "</div>" : "") + (doc.location ? "<div>الموقع: " + esc(doc.location) + "</div>" : "") + (doc.notes ? "<div>ملاحظات: " + esc(doc.notes) + "</div>" : "") + "</div>" +
-      "<div><div>هاتف: " + esc(company.phone || "") + "</div><div>العنوان: " + esc(company.address || "") + "</div><div>الرقم الضريبي: " + esc(company.tax_id || "") + "</div></div></div>" +
+      "<div><div>هاتف: " + esc(company.phone || "") + "</div><div>العنوان: " + esc(company.address || "") + "</div><div>الرقم الضريبي: " + esc(company.tax_id || "") + "</div>" + (company.currency ? "<div>العملة: " + esc(company.currency) + "</div>" : "") + "</div></div>" +
       "<table><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>" + rows + "</tbody></table>" +
       "<table class=totals>" + tot + "</table>";
   }

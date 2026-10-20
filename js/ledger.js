@@ -30,20 +30,22 @@
     var party = d[0] || {};
     var all = [];
     d[1].filter(function (r) { return r[key] === id && r.status !== "void"; }).forEach(function (r) {
-      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "sale" : "purchase", ref: r.number, desc: r.notes || "", inc: N(r.total), dec: 0 });
+      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "sale" : "purchase", ref: r.number, book: r.book_no || "", rank: 0, desc: r.notes || "", inc: N(r.total), dec: 0 });
     });
     d[2].filter(function (r) { return r[key] === id && r.status !== "void"; }).forEach(function (r) {
-      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "sale_return" : "purchase_return", ref: r.number, desc: r.notes || "", inc: 0, dec: N(r.total) });
+      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "sale_return" : "purchase_return", ref: r.number, rank: 2, desc: r.notes || "", inc: 0, dec: N(r.total) });
     });
     d[3].filter(function (r) { return r.party_type === type && r.party_id === id; }).forEach(function (r) {
-      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "receipt" : "payment", ref: "", desc: r.notes || "", inc: 0, dec: N(r.amount) });
+      all.push({ date: dayOf(r), at: r.created_at, kind: isC ? "receipt" : "payment", ref: "", rank: 3, desc: r.notes || "", inc: 0, dec: N(r.amount) });
     });
     d[4].filter(function (r) { return r.party_type === type && r.party_id === id; }).forEach(function (r) {
       var up = r.direction === "inc";
-      all.push({ date: dayOf(r), at: r.created_at, kind: r.kind, ref: "", desc: r.notes || "", inc: up ? N(r.amount) : 0, dec: up ? 0 : N(r.amount) });
+      all.push({ date: dayOf(r), at: r.created_at, kind: r.kind, ref: "", rank: 1, desc: r.notes || "", inc: up ? N(r.amount) : 0, dec: up ? 0 : N(r.amount) });
     });
     all.sort(function (a, b) {
-      return a.date === b.date ? String(a.at || "").localeCompare(String(b.at || "")) : (a.date < b.date ? -1 : 1);
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;           // التاريخ ثم: فاتورة ← تسوية/خصم ← مرتجع ← تحصيل (نفس ترتيب رولكس)
+      if ((a.rank || 0) !== (b.rank || 0)) return (a.rank || 0) - (b.rank || 0);
+      return String(a.at || "").localeCompare(String(b.at || ""));
     });
 
     var opening = N(party.opening_balance);

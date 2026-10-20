@@ -13,6 +13,12 @@
   };
 
   company = Object.assign(company, DB.getCompany());
+  var CURS = [["ج.م", "جنيه مصري"], ["ر.س", "ريال سعودي"], ["د.إ", "درهم إماراتي"], ["د.ك", "دينار كويتي"], ["ر.ق", "ريال قطري"], ["د.ب", "دينار بحريني"],
+    ["ر.ع", "ريال عماني"], ["د.أ", "دينار أردني"], ["ل.ل", "ليرة لبنانية"], ["ل.س", "ليرة سورية"], ["د.ع", "دينار عراقي"], ["د.ل", "دينار ليبي"],
+    ["د.ت", "دينار تونسي"], ["د.ج", "دينار جزائري"], ["د.م", "درهم مغربي"], ["ر.ي", "ريال يمني"], ["ج.س", "جنيه سوداني"], ["$", "دولار أمريكي"], ["€", "يورو"], ["£", "جنيه إسترليني"], ["ر.ت", "ليرة تركية"]];
+  var curKnown = CURS.some(function (c) { return c[0] === company.currency; });
+  var curOptions = CURS.map(function (c) { return '<option value="' + c[0] + '"' + (c[0] === (company.currency || "ج.م") ? " selected" : "") + ">" + c[1] + " (" + c[0] + ")</option>"; }).join("") +
+    '<option value="__other"' + (company.currency && !curKnown ? " selected" : "") + ">عملة أخرى…</option>";
 
   page.innerHTML = html`
     <div class="stack">
@@ -29,7 +35,10 @@
           <div class="field"><label>الهاتف</label><input id="co-phone" value="${company.phone || ""}" dir="ltr"></div>
           <div class="field"><label>العنوان</label><input id="co-addr" value="${company.address || ""}"></div>
           <div class="field"><label>الرقم الضريبي</label><input id="co-tax" value="${company.tax_id || ""}" dir="ltr"></div>
+          <div class="field"><label>العملة</label><select id="co-cur">${curOptions}</select></div>
+          <div class="field" id="co-cur-wrap" style="${company.currency && !curKnown ? "" : "display:none"}"><label>رمز العملة</label><input id="co-cur-custom" value="${company.currency && !curKnown ? company.currency : ""}" maxlength="8"></div>
         </div>
+        <p class="muted" style="margin:0;font-size:12px">تظهر العملة في الفواتير المطبوعة وكشوف الحساب وملفات Excel وتقارير المخزون.</p>
         <div><button type="button" class="primary" id="save-co">حفظ بيانات الشركة</button></div>
       </div>
 
@@ -81,7 +90,14 @@
       phone: document.getElementById("co-phone").value.trim(),
       address: document.getElementById("co-addr").value.trim(),
       tax_id: document.getElementById("co-tax").value.trim(),
+      currency: (function () {
+        var v = document.getElementById("co-cur").value;
+        return v === "__other" ? (document.getElementById("co-cur-custom").value.trim() || "ج.م") : v;
+      })(),
     });
+  };
+  document.getElementById("co-cur").onchange = function () {
+    document.getElementById("co-cur-wrap").style.display = this.value === "__other" ? "" : "none";
   };
   document.getElementById("save-vat").onclick = function () {
     saveCompanyPatch({
