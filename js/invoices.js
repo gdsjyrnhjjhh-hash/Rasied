@@ -110,6 +110,7 @@
     if (!d.party_id) throw new Error("اختر " + K.plabel);
     if (!d.lines || !d.lines.length) throw new Error("أضف منتجًا واحدًا على الأقل");
     if (!d.date) throw new Error("اختر التاريخ");
+    if (existing) DB.assertCan("edit");
     var c = compute(kind, d);
     if (c.paid > c.total + 0.004) throw new Error("المدفوع أكبر من إجمالي الفاتورة");
 
@@ -160,6 +161,7 @@
     });
     cogs = r2(cogs);
     if (!existing) rows.unshift({ table: K.table, row: Object.assign({ id: docId }, header) });
+    else { var meU = DB.me(); header.edited_by = meU.id; header.edited_by_name = meU.name; header.edited_at = new Date().toISOString(); }
 
     var label = K.title + " #" + number;
     var j1;
@@ -202,6 +204,7 @@
 
   async function remove(kind, id) {
     var K = KINDS[kind];
+    DB.assertCan("delete");
     var doc = await DB.get(K.table, id, { fresh: true });
     if (!doc) throw new Error("المستند غير موجود");
     await reverse(kind, doc);

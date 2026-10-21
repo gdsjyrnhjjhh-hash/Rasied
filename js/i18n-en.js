@@ -121,6 +121,16 @@ I18n.add({
   "مجموع المجموعة": "Group total", "ميزان المراجعة": "Trial balance", "متوازن": "Balanced", "غير متوازن": "Unbalanced",
   "قالب الاستيراد": "Import template", "استيراد Excel": "Import Excel", "طباعة PDF": "Print PDF", "رصيد افتتاحي": "Opening balance", "تحويل بين الخزائن": "Transfer between registers",
   "رقم الحركة": "Movement no.", "وارد": "In", "صادر": "Out", "منصرف": "Out", "التبويب العام": "General tab", "التبويب الخاص": "Private tab",
+  "مستخدمو الشركة": "Company users", "إدارة مستخدمي الشركة": "Manage company users", "+ موظف جديد": "+ New employee", "موظف جديد": "New employee", "الموظف": "Employee",
+  "أضف موظفيك بأرقام تليفوناتهم وحدّد الصفحات المسموحة لكل واحد · الإعدادات وهذه الصفحة للمالك فقط": "Add your staff by phone number and choose the pages each one may use · Settings and this page are owner-only",
+  "أضف أكثر من مستخدم لنفس الشركة (محاسب، أمين مخزن، مبيعات…) لكل واحد رقم هاتفه وكلمة مروره، وحدّد له الصفحات المسموحة، ويمكنك منعه من الحذف أو تعديل المستندات. يظهر اسم من أنشأ كل فاتورة وحركة خزينة.":
+    "Add more than one user to the same company (accountant, storekeeper, sales…), each with their own phone number and password. Choose the pages they can use and optionally block deleting or editing saved documents. The creator’s name shows on every invoice and cash movement.",
+  "قيود إضافية": "Extra restrictions", "(تُطبَّق على هذا الموظف فقط)": "(applies to this employee only)", "مقيَّد": "Restricted",
+  "منع الحذف (المستندات والحسابات والأصناف وغيرها)": "Block deleting (documents, accounts, products, etc.)",
+  "منع تعديل المستندات المحفوظة (فواتير ومرتجعات وحركات الخزينة)": "Block editing saved documents (invoices, returns, cash movements)",
+  "غير مصرّح لك بالحذف — تواصل مع مالك الشركة": "You are not allowed to delete — contact the company owner",
+  "غير مصرّح لك بتعديل المستندات المحفوظة — تواصل مع مالك الشركة": "You are not allowed to edit saved documents — contact the company owner",
+  "الصفحات المسموحة": "Allowed pages", "الحالة": "Status", "نشط": "Active", "موقوف": "Suspended", "أيام الاستخدام": "Days used", "مرات الدخول": "Logins", "آخر دخول": "Last login", "إدارة": "Manage",
   /* ---- أنواع الحسابات ---- */
   "أصول": "Assets", "خصوم": "Liabilities", "حقوق ملكية": "Equity", "إيرادات": "Revenue", "مصروفات": "Expenses",
   /* ---- تسجيل الدخول ---- */

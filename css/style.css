@@ -1069,3 +1069,22 @@ html.dark mark{background:#854d0e}
 .stm-table tr.tot td { background: var(--primary-soft); font-weight: 800; border-top: 2px solid var(--primary); }
 .stm-table td.nw { white-space: nowrap; }
 @media (max-width: 640px) { .stm-box { margin: 0; border-radius: 0; min-height: 100vh; } .stm-toolbar .sp { display: none; } }
+
+/* ===== v33 — كثافة مدمجة (افتراضية): تقليل الأحجام قليلًا حتى لا تخرج الجداول العريضة (مثل المستخدمين) من الصفحة.
+   للرجوع للحجم القديم: html[data-density="normal"] (من الإعدادات ← المظهر) ===== */
+:root:not([data-density="normal"]) { --sidebar-w: 236px; }
+:root:not([data-density="normal"]) body { font-size: 13px; }
+:root:not([data-density="normal"]) .content { padding: 18px 20px 40px; }
+:root:not([data-density="normal"]) .card { padding: 16px; }
+:root:not([data-density="normal"]) table { font-size: 12.5px; }
+:root:not([data-density="normal"]) thead th { padding: 9px 10px; font-size: 11px; }
+:root:not([data-density="normal"]) tbody td { padding: 9px 10px; }
+:root:not([data-density="normal"]) .card.table-wrap, :root:not([data-density="normal"]) .card.table-card { padding: 0; }
+:root:not([data-density="normal"]) td .small + .small { margin-inline-start: 4px; }
+:root:not([data-density="normal"]) button.small, :root:not([data-density="normal"]) a.small.button { padding-inline: 10px; }
+:root:not([data-density="normal"]) .stats { gap: 12px; }
+:root:not([data-density="normal"]) .modal { padding: 20px; }
+/* جدول أي صفحة: لا يتجاوز عرض الشاشة — يلتف النص بدل الخروج، والتمرير الأفقي احتياطي فقط */
+.table-wrap { max-width: 100%; }
+:root:not([data-density="normal"]) tbody td { overflow-wrap: anywhere; }
+:root:not([data-density="normal"]) td[dir="ltr"], :root:not([data-density="normal"]) td.nw { overflow-wrap: normal; }

@@ -150,5 +150,20 @@
   }
   // رقم تسلسلي في Excel → YYYY-MM-DD
   function serialToISO(n) { var d = new Date(Math.round((Number(n) - 25569) * 86400000)); return isNaN(d) ? "" : d.toISOString().slice(0, 10); }
-  window.Xlsx = { build: build, download: download, read: read, serialToISO: serialToISO };
+
+  // قراءة CSV (اقتباس مزدوج، فواصل , ; أو Tab) → مصفوفة صفوف
+  function parseCsv(text) {
+    var rows = [], row = [], cur = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charAt(i);
+      if (q) { if (c === '"') { if (text.charAt(i + 1) === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === "," || c === ";" || c === "\t") { row.push(cur); cur = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text.charAt(i + 1) === "\n") i++; row.push(cur); cur = ""; if (row.some(function (x) { return x !== ""; })) rows.push(row); row = []; }
+      else cur += c;
+    }
+    row.push(cur); if (row.some(function (x) { return x !== ""; })) rows.push(row);
+    return rows;
+  }
+  window.Xlsx = { build: build, download: download, read: read, serialToISO: serialToISO, parseCsv: parseCsv };
 })();

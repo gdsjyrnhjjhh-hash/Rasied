@@ -84,4 +84,19 @@
 
   // لو الجلسة موجودة ادخل مباشرة
   client.auth.getSession().then(function (s) { if (s.data.session) location.replace("index.html"); });
+  // نسيت كلمة المرور: الحسابات تُنشأ بالهاتف (بلا بريد حقيقي) فلا يوجد رابط استرجاع تلقائي بعد — الإرشاد حسب نوع الحساب
+  var forgot = document.getElementById("forgot");
+  if (forgot) forgot.onclick = function () {
+    var wa = String((window.APP_CONFIG && window.APP_CONFIG.SUPPORT_WHATSAPP) || "").replace(/\D/g, "");
+    var ov = document.createElement("div");
+    ov.className = "modal-overlay";
+    ov.innerHTML = '<div class="modal card"><h3 style="margin-top:0">نسيت كلمة المرور؟</h3>' +
+      '<p><b>إذا كنت موظفًا:</b> اطلب من مالك الشركة تغيير كلمة مرورك من «مستخدمو الشركة» ← «تغيير كلمة المرور»، ثم ادخل بالكلمة الجديدة.</p>' +
+      '<p><b>إذا كنت مالك الشركة:</b> تواصل مع إدارة النظام برقم هاتفك المسجّل ليتم تعيين كلمة مرور جديدة لك.</p>' +
+      (wa ? '<p><a class="button primary" target="_blank" rel="noopener" href="https://wa.me/' + wa + '">تواصل عبر واتساب</a></p>' : "") +
+      '<div class="row gap" style="justify-content:flex-end"><button type="button" class="ghost" id="fg-close">إغلاق</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector("#fg-close").onclick = function () { ov.remove(); };
+    ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  };
 })();

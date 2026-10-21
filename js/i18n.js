@@ -14,14 +14,22 @@
     rx = keys.length ? new RegExp("(^|[^\\u0600-\\u06FF])(" + keys.map(esc).join("|") + ")(?![\\u0600-\\u06FF])", "g") : null;
     cache = {};
   }
+  // ترجمة مقطع: تطابق كامل، أو استبدال عبارات؛ لو بقي عربي (اسم بيانات غير معروف) يُترك المقطع كما هو بدل خليط «صندوق Purchases»
+  function sub(seg) {
+    if (!AR.test(seg)) return seg;
+    var t = seg.trim();
+    if (dict[t] != null) return seg.replace(t, dict[t]);
+    if (!rx) build();
+    var out = rx ? seg.replace(rx, function (m, pre, key) { return pre + dict[key]; }) : seg;
+    return AR.test(out) ? null : out;
+  }
   function tr(s) {
     if (lang !== "en" || !s || !AR.test(s)) return s;
     if (cache[s] != null) return cache[s];
-    var t = s.trim(), out;
-    if (dict[t] != null) out = s.replace(t, dict[t]);
-    else {
-      if (!rx) build();
-      out = rx ? s.replace(rx, function (m, pre, key) { return pre + dict[key]; }) : s;
+    var out = sub(s);
+    if (out == null) {
+      // نص مختلط (واجهة + اسم بيانات): ترجم كل مقطع على حدة بين الفواصل
+      out = s.split(/([:—–·()#\/|،,;\d]+|\s-\s)/).map(function (p, i) { if (i % 2) return p; var r = sub(p); return r == null ? p : r; }).join("");
     }
     out = out.replace(/(^|[^\u0600-\u06FF])من(?=\s+(?:\d|البداية))/g, "$1From").replace(/،/g, ",").replace(/؟/g, "?");
     if (Object.keys(cache).length > 4000) cache = {};

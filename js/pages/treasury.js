@@ -140,7 +140,7 @@
       ${view.map(function (m) {
         var ty = TYPE[m.type || (m.kind === "in" ? "in" : "out")] || ["—", ""], plus = isPlus(m);
         return html`<tr data-id="${m.id}"><td dir="ltr"><b>${m._n}</b></td><td dir="ltr">${m._d}</td>
-          <td class="desc">${hl(m.notes, f.text.trim())}${locked(m) ? ' <span class="badge">مرتبطة</span>' : ""}</td>
+          <td class="desc">${hl(m.notes, f.text.trim())}${locked(m) ? ' <span class="badge">مرتبطة</span>' : ""}${m.by_name ? ' <small class="muted">· ' + esc(m.by_name) + "</small>" : ""}</td>
           <td><span class="badge ${ty[1]}">${ty[0]}</span></td>
           <td class="in-c">${plus ? money(m.amount) : ""}</td><td class="out-c">${plus ? "" : money(m.amount)}</td>
           <td>${esc(tabName(m.tab_id)) || "—"}</td><td>${esc(tabName(m.ptab_id)) || "—"}</td>
@@ -193,6 +193,7 @@
         <div class="field full"><label>البيان</label><input id="m-notes" value="${edit ? esc(m.notes) : ""}"></div>
         ${lk ? '<div class="muted full" style="font-size:12px">هذه حركة مرتبطة بمستند آخر — يمكن تعديل البيان والتبويبات فقط.</div>' : ""}
       </div>`, async function (ov) {
+      if (edit) DB.assertCan("edit");
       var notes = val("m-notes").trim(), tab = val("m-tab"), ptab = val("m-ptab");
       if (edit && lk) { await DB.update("cash_movements", m.id, { notes: notes, tab_id: tab, ptab_id: ptab }); }
       else {
@@ -218,6 +219,7 @@
   }
 
   async function delMove(m) {
+    try { DB.assertCan("delete"); } catch (e) { UI.toast(e.message, true); return; }
     if (locked(m)) { UI.toast("حركة مرتبطة بمستند — احذف المستند الأصلي", true); return; }
     var msg = isTransfer(m) ? "حذف التحويل سيحذف الحركتين في الخزينتين. متابعة؟" : "حذف الحركة #" + m._n + "؟";
     if (!confirm(msg)) return;

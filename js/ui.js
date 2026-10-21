@@ -302,6 +302,14 @@
   }
 
   // يبني سياق الصلاحيات والقائمة من الملف الشخصي (حقيقي أو من الكاش)
+  // كثافة العرض: مدمجة افتراضيًا؛ "normal" تعيد الأحجام القديمة (تُضبط من الإعدادات)
+  try { if (localStorage.getItem("trading_density") === "normal") document.documentElement.setAttribute("data-density", "normal"); } catch (e) {}
+  // رسالة واضحة عند منع إجراء مقيَّد (حذف/تعديل) بدل خطأ صامت في الصفحات التي لا تلتقط الاستثناء
+  window.addEventListener("unhandledrejection", function (e) {
+    var m = e && e.reason && e.reason.message;
+    if (m && /^غير مصرّح/.test(m)) { e.preventDefault(); try { UI.toast(m, true); } catch (x) {} }
+  });
+
   function buildCtx(prof, pending) {
     var isAdmin = !!(prof && prof.role === "admin");
     var isStaff = !!(prof && prof.company_role === "staff");

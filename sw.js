@@ -2,14 +2,14 @@
    - التنقل والـ CSS/JS: الشبكة أولًا (دائمًا أحدث نسخة) وعند انقطاع الإنترنت من الكاش.
    - الخطوط والصور ومكتبة Supabase المثبّتة الإصدار: الكاش أولًا (سريعة).
    - لا يعترض أي طلب لواجهة Supabase أو أي دومين آخر → البيانات دائمًا مباشرة من السيرفر. */
-const VERSION = "raseed-v31";
+const VERSION = "raseed-v35";
 const STATIC = VERSION + "-static";
 const RUNTIME = VERSION + "-runtime";
 const PRECACHE = [
   "offline.html",
   "manifest.webmanifest",
   "favicon.ico",
-  "css/style.css?v=31",
+  "css/style.css?v=35",
   "assets/fonts/Cairo-Regular.ttf",
   "assets/fonts/Cairo-SemiBold.ttf",
   "assets/fonts/Cairo-Bold.ttf",

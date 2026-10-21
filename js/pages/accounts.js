@@ -11,7 +11,13 @@
           <h2 style="margin:0">دليل الحسابات</h2>
           <p class="muted" style="margin:4px 0 0;font-size:12px">شجرة الحسابات المالية — حساب رئيسي وتحته حسابات فرعية</p>
         </div>
-        <button type="button" class="primary" id="btn-add">+ حساب جديد</button>
+        <div class="row gap wrap">
+          <button type="button" class="small" id="btn-imp">استيراد من Excel</button>
+          <button type="button" class="small" id="btn-tpl">قالب الاستيراد</button>
+          <button type="button" class="small" id="btn-exp">تصدير Excel</button>
+          <button type="button" class="primary" id="btn-add">+ حساب جديد</button>
+          <input type="file" id="imp-file" accept=".xlsx,.csv,text/csv" style="display:none">
+        </div>
       </div>
       <div class="stats" id="acc-stats"></div>
       <div class="row gap wrap">
@@ -178,6 +184,135 @@
     };
   }
 
+  /* ---------- استيراد / تصدير دليل الحسابات (Excel أو CSV) ---------- */
+  var TYPE_NAME = { asset: "أصول", liability: "خصوم", equity: "حقوق ملكية", revenue: "إيرادات", expense: "مصروفات" };
+  function nk(v) {
+    return String(v == null ? "" : v).replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x660); })
+      .replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+  function latin(v) { return String(v == null ? "" : v).replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x660); }).trim().replace(/\.0+$/, ""); }
+  function typeFromText(t) {
+    t = nk(t); if (!t) return "";
+    if (/^(اصول|اصل|موجودات|اصول ثابته|اصول متداوله|asset|assets)/.test(t)) return "asset";
+    if (/^(خصوم|التزامات|خصم|خصوم متداوله|liabilit)/.test(t)) return "liability";
+    if (/(حقوق|راس المال|equity|capital)/.test(t)) return "equity";
+    if (/^(ايراد|ايرادات|دخل|مبيعات|revenue|income|sales)/.test(t)) return "revenue";
+    if (/^(مصروف|مصروفات|مصاريف|تكاليف|تكلفه|expense|cost)/.test(t)) return "expense";
+    return "";
+  }
+  function typeFromCode(code) { return { "1": "asset", "2": "liability", "3": "equity", "4": "revenue", "5": "expense" }[String(code).charAt(0)] || ""; }
+  function exportXlsx() {
+    var co = DB.getCompany(), tree = Ledger.accountTree(accounts), byId = {};
+    accounts.forEach(function (a) { byId[a.id] = a; });
+    var rows = [[{ v: (co.name || "") + " — دليل الحسابات", s: "title" }],
+      ["الكود", "اسم الحساب", "النوع", "كود الحساب الرئيسي", "المستوى"].map(function (h) { return { v: h, s: "head" }; })];
+    tree.forEach(function (n) {
+      var p = n.a.parent && byId[n.a.parent];
+      rows.push([{ v: String(n.a.code || ""), s: "text" }, { v: n.a.name, s: "text" }, { v: UI.typeLabel(n.a.type), s: "text" }, { v: p ? String(p.code || "") : "", s: "text" }, { v: n.level + 1, s: "date" }]);
+    });
+    Xlsx.download("دليل-الحسابات.xlsx", { sheet: "دليل الحسابات", cols: [14, 40, 16, 22, 10], merges: ["A1:E1"], rows: rows });
+  }
+  function downloadTemplate() {
+    var H = ["الكود", "اسم الحساب", "النوع", "كود الحساب الرئيسي"];
+    var ex = [["1000", "الأصول", "أصول", ""], ["1100", "النقدية", "أصول", "1000"], ["1101", "الصندوق الرئيسي", "أصول", "1100"], ["1102", "صندوق الفرع", "أصول", "1100"],
+      ["2000", "الخصوم", "خصوم", ""], ["2100", "الموردين", "خصوم", "2000"], ["4000", "الإيرادات", "إيرادات", ""], ["5000", "المصروفات", "مصروفات", ""]];
+    var rows = [H.map(function (h) { return { v: h, s: "head" }; })].concat(ex.map(function (r) { return r.map(function (v) { return { v: v, s: "text" }; }); }));
+    rows.push([{ v: "ملاحظات: الكود والاسم إلزاميان. النوع (أصول/خصوم/حقوق ملكية/إيرادات/مصروفات) اختياري للفرعي (يرث من الأب) وإن تُرك لحساب رئيسي يُستنتج من أول رقم في الكود (1 أصول، 2 خصوم، 3 حقوق ملكية، 4 إيرادات، 5 مصروفات). «كود الحساب الرئيسي» اختياري: إن تُرك يُستنتج الأب من بادئة الكود (1101 تحت 1100). الأكواد الموجودة مسبقًا تُتخطّى.", s: "boldtext" }]);
+    Xlsx.download("قالب-استيراد-دليل-الحسابات.xlsx", { sheet: "الحسابات", cols: [14, 40, 16, 22], merges: ["A" + rows.length + ":D" + rows.length], rows: rows });
+  }
+  async function importFile(e) {
+    var file = e.target.files[0]; if (!file) return;
+    e.target.value = "";
+    try {
+      var table = /\.xlsx$/i.test(file.name) ? await Xlsx.read(file) : Xlsx.parseCsv(String(await file.text()).replace(/^\uFEFF/, ""));
+      var hi = -1, i;
+      for (i = 0; i < Math.min(table.length, 15) && hi < 0; i++) if ((table[i] || []).some(function (c) { return /^(الكود|رقم الحساب|كود الحساب|code|account code)$/.test(nk(c)); })) hi = i;
+      var col = { code: 0, name: 1, type: 2, parent: 3 };
+      if (hi >= 0) {
+        col = { code: -1, name: -1, type: -1, parent: -1 };
+        table[hi].forEach(function (c, j) {
+          var h = nk(c);
+          if (/^(الكود|رقم الحساب|كود الحساب|code|account code)$/.test(h)) col.code = j;
+          else if (/^(اسم الحساب|الاسم|الحساب|اسم|name|account name|account)$/.test(h)) col.name = j;
+          else if (/^(النوع|نوع الحساب|التصنيف|type)$/.test(h)) col.type = j;
+          else if (/^(كود الحساب الرئيسي|الحساب الرئيسي|الحساب الاب|الاب|الرئيسي|رقم الحساب الرئيسي|parent|parent code)$/.test(h)) col.parent = j;
+        });
+        if (col.code < 0 || col.name < 0) throw new Error("لم أجد عمودَي «الكود» و«اسم الحساب» — حمّل «قالب الاستيراد»");
+      }
+      var existing = {}, existingName = {};
+      accounts.forEach(function (a) { existing[nk(a.code)] = a; existingName[nk(a.name)] = a; });
+      var sheet = [], byCode = {}, bad = 0, dupSheet = 0, dupExisting = 0;
+      for (i = hi >= 0 ? hi + 1 : 0; i < table.length; i++) {
+        var r = table[i] || [];
+        if (!r.some(function (c) { return c !== "" && c != null; })) continue;
+        var code = latin(r[col.code]), name = String(r[col.name] == null ? "" : r[col.name]).trim();
+        if (!code || !name || /^ملاحظات/.test(code) || /^ملاحظات/.test(name)) { if (code || name) bad++; continue; }
+        if (existing[nk(code)]) { dupExisting++; continue; }
+        if (byCode[nk(code)]) { dupSheet++; continue; }
+        var it = { code: code, name: name, typeTxt: col.type >= 0 ? r[col.type] : "", parentTxt: col.parent >= 0 ? latin(r[col.parent]) : "", id: newId(), isNew: true };
+        sheet.push(it); byCode[nk(code)] = it;
+      }
+      if (!sheet.length) throw new Error(dupExisting ? "كل الأكواد موجودة مسبقًا — لا جديد للاستيراد" : "لا توجد حسابات صالحة للاستيراد");
+      // تحديد الأب: عمود صريح (كود ثم اسم) وإلا بادئة الكود الأطول (في الشيت ثم الموجود)
+      var allCodes = sheet.map(function (x) { return x.code; }).concat(accounts.map(function (a) { return String(a.code); }));
+      var inferred = 0, unresolved = 0;
+      sheet.forEach(function (it) {
+        var p = null, pk = nk(it.parentTxt);
+        if (pk) {
+          p = byCode[pk] || existing[pk] || null;
+          if (!p) { var byName = sheet.filter(function (x) { return nk(x.name) === pk; })[0] || existingName[pk]; p = byName || null; }
+          if (!p) unresolved++;
+        } else {
+          var best = "";
+          allCodes.forEach(function (c) { if (c !== it.code && it.code.indexOf(c) === 0 && c.length > best.length) best = c; });
+          if (best) { p = byCode[nk(best)] || existing[nk(best)]; if (p) inferred++; }
+          if (!p && /^\d{3,}$/.test(it.code)) {                    // 1102 → 1100 → 1000
+            var c2 = it.code;
+            for (var g = 0; g < 8 && !p; g++) {
+              var m = /^(\d*?)([1-9])(0*)$/.exec(c2); if (!m) break;
+              c2 = m[1] + "0" + m[3];
+              if (c2 !== it.code && (byCode[nk(c2)] || existing[nk(c2)])) { p = byCode[nk(c2)] || existing[nk(c2)]; inferred++; }
+            }
+          }
+        }
+        it.parent = p && p !== it ? p : null;
+      });
+      // كسر الدوران (بين حسابات الملف فقط)
+      sheet.forEach(function (it) {
+        var seen = {}, cur = it;
+        while (cur && cur.isNew && cur.parent) {
+          if (seen[cur.id]) { it.parent = null; break; }
+          seen[cur.id] = 1; cur = cur.parent;
+        }
+      });
+      // النوع: يرث من الأب، وإلا من نص الملف، وإلا من أول رقم في الكود
+      var typeInferred = 0, typeConflict = 0, noType = [];
+      var typeOf = function (it, depth) {
+        if (it.type) return it.type;                                  // حساب موجود أو محسوم
+        var own = typeFromText(it.typeTxt);
+        if (it.parent && depth < 30) {
+          var pt = typeOf(it.parent, depth + 1);
+          if (pt) { if (own && own !== pt) typeConflict++; it.type = pt; return pt; }
+        }
+        var t = own;
+        if (!t) { t = typeFromCode(it.code); if (t) typeInferred++; }
+        it.type = t; return t;
+      };
+      sheet.forEach(function (it) { typeOf(it, 0); if (!it.type) noType.push(it.code); });
+      if (noType.length) throw new Error("تعذّر تحديد نوع الحسابات: " + noType.slice(0, 6).join("، ") + (noType.length > 6 ? "…" : "") + " — أضف عمود «النوع»");
+      var roots = sheet.filter(function (x) { return !x.parent; }).length;
+      var sample = sheet.slice(0, 8).map(function (x) { return x.code + " — " + x.name + " (" + TYPE_NAME[x.type] + ")" + (x.parent ? " ← " + x.parent.code : ""); }).join("\n");
+      if (!confirm("سيتم إضافة " + sheet.length + " حساب (" + roots + " رئيسي، " + (sheet.length - roots) + " فرعي)\n\n" + sample + (sheet.length > 8 ? "\n…" : "") +
+        (inferred ? "\n\nاستُنتج الأب من بادئة الكود لـ " + inferred + " حساب" : "") + (typeInferred ? "\nاستُنتج النوع من أول رقم في الكود لـ " + typeInferred + " حساب" : "") +
+        (typeConflict ? "\nتعارض نوع الفرعي مع أبيه في " + typeConflict + " حساب — اعتُمد نوع الأب" : "") +
+        (dupExisting ? "\nتخطّي " + dupExisting + " كود موجود مسبقًا" : "") + (dupSheet ? "\nتخطّي " + dupSheet + " كود مكرر في الملف" : "") +
+        (bad ? "\nتخطّي " + bad + " صف ناقص" : "") + (unresolved ? "\nحسابات أبوها غير موجود (ستُضاف كرئيسية): " + unresolved : "") + "\n\nمتابعة؟")) return;
+      await DB.insertRows(sheet.map(function (x) { return { table: "accounts", row: { id: x.id, code: x.code, name: x.name, type: x.type, parent: x.parent ? x.parent.id : null } }; }));
+      UI.toast("تم استيراد " + sheet.length + " حساب"); await load();
+    } catch (err) { UI.toast(err.message || "تعذّر الاستيراد", true); }
+  }
+  function newId() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+
   async function load() {
     DB.refresh("accounts");
     accounts = await DB.list("accounts");
@@ -185,6 +320,10 @@
   }
 
   document.getElementById("btn-add").onclick = function () { openForm(null); };
+  document.getElementById("btn-imp").onclick = function () { document.getElementById("imp-file").click(); };
+  document.getElementById("imp-file").onchange = importFile;
+  document.getElementById("btn-tpl").onclick = downloadTemplate;
+  document.getElementById("btn-exp").onclick = exportXlsx;
   document.getElementById("q").oninput = render;
   document.getElementById("ftype").onchange = render;
   document.getElementById("exp-all").onclick = function () { collapsed = {}; render(); };

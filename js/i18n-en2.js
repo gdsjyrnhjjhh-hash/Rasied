@@ -1,0 +1,36 @@
+/* قاموس الإنجليزية — الدفعة 2: الخزينة، إدخال الفواتير (وحدات القياس)، ثم صفحات أخرى */
+I18n.add({
+  /* ---- الخزينة ---- */
+  "تحويل وارد": "Incoming transfer", "تحويل صادر": "Outgoing transfer", "بحث في البيان": "Search description", "اكتب جزءًا من البيان…": "Type part of the description…",
+  "ترتيب حسب رقم الحركة": "Sort by movement no.", "إجمالي الوارد": "Total in", "إجمالي المنصرف": "Total out", "عدد الحركات": "Movements", "جرد النقدية": "Cash count",
+  "إضافة حركة": "Add movement", "لا توجد خزائن. أضف خزينة من صفحة الخزائن.": "No cash registers. Add one from the Cash registers page.", "النتائج:": "Results:", "الصافي:": "Net:",
+  "نسخ النتائج": "Copy results", "حركة": "movement", "تم نسخ النتائج": "Results copied", "تعذّر النسخ": "Could not copy", "مرتبطة": "Linked", "لا توجد حركات": "No movements",
+  "وارد خزينة:": "Cash in:", "منصرف خزينة:": "Cash out:", "تعديل الحركة #": "Edit movement #", "وارد (إيداع": "In (deposit", "منصرف (صرف": "Out (withdrawal",
+  "هذه حركة مرتبطة بمستند آخر — يمكن تعديل البيان والتبويبات فقط.": "This movement is linked to another document — only the description and tabs can be edited.",
+  "الرصيد غير كافٍ لهذا التعديل": "Insufficient balance for this edit", "الرصيد غير كافٍ": "Insufficient balance", "حركة مرتبطة بمستند — احذف المستند الأصلي": "Linked to a document — delete the original document",
+  "حذف التحويل سيحذف الحركتين في الخزينتين. متابعة؟": "Deleting the transfer will delete both movements in the two registers. Continue?", "حذف الحركة #": "Delete movement #",
+  "الحذف يجعل رصيد الخزينة سالبًا": "Deleting would make the register balance negative", "تمت الإضافة": "Added", "تحتاج خزينتين على الأقل": "You need at least two cash registers",
+  "تنفيذ التحويل": "Make transfer", "تم التحويل": "Transfer done", "جرد النقدية —": "Cash count —", "حفظ الجرد": "Save count", "جرد جديد": "New count", "سجل الجرد": "Count history",
+  "مبلغ آخر": "Other amount", "إجمالي الجرد": "Counted total", "رصيد النظام": "System balance", "الجرد مطابق لرصيد النظام": "The count matches the system balance",
+  "زيادة في الخزينة:": "Surplus in register:", "عجز في الخزينة:": "Shortage in register:", "أدخل الفئات أولًا": "Enter the denominations first", "تم حفظ الجرد": "Count saved",
+  "الجرد": "Count", "الفرق": "Difference", "لا يوجد جرد محفوظ": "No saved counts", "جرد بتاريخ": "Count dated", "للعرض فقط": "view only", "الفئة": "Denomination", "العدد": "Count",
+  "القيمة": "Value", "رصيد النظام وقتها": "System balance then", "حذف سجل الجرد؟": "Delete this count record?", "— خزينة:": "— Register:", "— عدد الحركات:": "— Movements:",
+  "رقم السند": "Voucher no.", "الحركات": "Movements", "مثال: تحصيل من عميل": "Example: collection from a customer", "مثال: مصروف إيجار": "Example: rent expense", "كشف خزينة": "Register statement",
+  "خزينة:": "Register:", "عدد الحركات:": "Movements:", "لم أجد أعمدة «التاريخ» و«وارد/صادر» — حمّل «قالب الاستيراد»": "Could not find the “Date” and “In/Out” columns — download the “Import template”",
+  "لا توجد حركات صالحة للاستيراد": "No valid movements to import", "سيتم استيراد": "About to import", "حركة إلى «": "movements into “", "صف بمبلغ صفر": "rows with a zero amount",
+  "صف بتاريخ/مبلغ غير صالح": "rows with an invalid date/amount", "تبويبات غير موجودة (ستُترك فارغة):": "Tabs not found (will be left empty):", "متابعة؟": "Continue?",
+  "تم استيراد": "Imported", "تعذّر الاستيراد": "Import failed", "تخطّي": "skipping", "تخطّي": "Skipping", "ملاحظات: اكتب إما «وارد» أو «صادر» لكل صف.": "Notes: write either “In” or “Out” for each row.",
+  /* ---- إدخال الفواتير ---- */
+  "قطعة": "Piece", "كرتونة": "Carton", "علبة": "Box", "كيلو": "Kg", "جرام": "Gram", "متر": "Meter", "لتر": "Liter", "شيكارة": "Sack", "كيس": "Bag", "جردل": "Bucket",
+  "جركن": "Jerrycan", "برميل": "Barrel", "دستة": "Dozen", "طن": "Ton", "جديد": "New", "بيانات": "Details", "المرتجع": "Return", "الفاتورة": "Invoice", "الرقم": "Number",
+  "ثابت": "Fixed", "آلي": "Auto", "ابحث بالاسم أو الهاتف أو الكود...": "Search by name, phone or code...", "رقم الدفتر / المرجع": "Book no. / reference", "اختياري": "Optional",
+  "المندوب": "Sales rep", "المسؤول": "Person in charge", "الناولون / مصاريف نقل": "Delivery / transport costs", "الخصم على": "Discount on", "بدون ضريبة": "No tax", "الموقع": "Location",
+  "موقع التسليم": "Delivery location", "بدون (آجل / بنك": "None (credit / bank", "إضافة منتج": "Add product", "المنتج *": "Product *", "0 للهدايا": "0 for gifts",
+  "المخزون المتاح": "Available stock", "ملاحظة على البند": "Line note", "لون / مقاس / ...": "Color / size / ...", "إضافة المنتج": "Add the product", "تفريغ": "Clear",
+  "المنتجات المضافة": "Added products", "0 منتج": "0 products", "المنتج": "Product", "حفظ التعديل": "Save changes", "حفظ وترحيل": "Save & post", "معاينة": "Preview",
+  "حد الائتمان:": "Credit limit:", "تجاوز الحد": "Limit exceeded", "متاح": "Available", "منتج": "product", "لا توجد منتجات مضافة": "No products added", "أضف منتجًا من النموذج": "Add a product from the form",
+  "الضريبة": "Tax", "اختر المنتج من القائمة": "Pick the product from the list", "اكتب كمية صحيحة": "Enter a valid quantity", "السعر غير صحيح": "Invalid price", "حفظ تعديل البند": "Save line changes",
+  "عميل جديد": "New customer", "مورد جديد": "New supplier", "والمطلوب": "and requested", "الكمية المطلوبة أكبر من المخزون:": "Requested quantity exceeds stock:",
+  "هذه الفاتورة تتجاوز حد ائتمان العميل": "This invoice exceeds the customer’s credit limit", "تم حفظ": "Saved", "أضف منتجًا للمعاينة": "Add a product to preview", "أضف منتجًا أولًا": "Add a product first",
+  "تفريغ كل البيانات؟": "Clear all data?"
+});

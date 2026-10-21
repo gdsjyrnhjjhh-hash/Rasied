@@ -1,0 +1,42 @@
+/* قاموس الإنجليزية — الدفعة 3: الإدارة، الشيكات، لوحة التحكم */
+I18n.add({
+  /* ---- الإدارة ---- */
+  "صفحة الإدارة متاحة فقط عند الربط بـ Supabase.": "The admin page is only available when connected to Supabase.", "بنود البيع": "Sales lines", "بنود مردودات البيع": "Sales return lines",
+  "بنود الشراء": "Purchase lines", "السندات": "Vouchers", "بنود القيود": "Journal lines", "حركات الخزائن": "Cash movements", "مسيرات الرواتب": "Payroll runs", "بنود المرتبات": "Payroll lines",
+  "لم يدخل بعد": "Never signed in", "الآن": "Now", "قبل": "ago", "دقيقة": "minute", "ساعة": "hour", "يوم": "day", "تعذّر تحميل المستخدمين:": "Could not load users:",
+  "إجمالي المسجلين": "Total registered", "حسابات نشطة": "Active accounts", "حسابات موقوفة": "Suspended accounts", "انضموا آخر 7 أيام": "Joined in the last 7 days",
+  "نشطون آخر 24 ساعة": "Active in the last 24 hours", "متصل الآن": "Online now", "لا يوجد مستخدمون مطابقون": "No matching users", "مدير": "Admin", "منذ": "since", "مرة": "times",
+  "سجل": "records", "التفاصيل": "Details", "إيقاف": "Suspend", "تفعيل": "Activate", "كل مستخدم له شركة مستقلة · الأدمن فقط يرى هذه الصفحة": "Every user has an independent company · only the admin sees this page",
+  "بحث بالاسم أو الهاتف أو الشركة…": "Search by name, phone or company…", "كل الحالات": "All statuses", "المستخدم": "User", "التسجيل": "Registered", "آخر ظهور": "Last seen", "البيانات": "Data",
+  "تم تفعيل الحساب": "Account activated", "تم إيقاف الحساب": "Account suspended", "إيقاف حساب:": "Suspend account:",
+  "سيفقد المستخدم الوصول لبياناته فوراً حتى تُعيد تفعيله. بياناته تبقى محفوظة.": "The user will lose access to their data immediately until you reactivate them. Their data is kept.",
+  "رسالة تظهر للمستخدم (اختياري": "Message shown to the user (optional", "مثال: انتهت الفترة التجريبية، تواصل معنا لتفعيل النظام": "Example: the trial has ended, contact us to activate the system",
+  "تأكيد الإيقاف": "Confirm suspension", "مدة التسجيل": "Registration period", "أيام الاستخدام الفعلي": "Actual days used", "إجمالي السجلات": "Total records", "النشاط": "Activity",
+  "زيارة": "visits", "· لا نشاط": "· no activity", "آخر 30 يوماً (كل مربع": "Last 30 days (each square", "يوم، الأغمق": "a day, darker", "نشاط أكثر": "more activity",
+  "آخر عمليات الدخول": "Latest sign-ins", "الوقت": "Time", "الجهاز": "Device", "لا توجد عمليات دخول": "No sign-ins", "لم يُدخل هذا المستخدم أي بيانات بعد": "This user has not entered any data yet",
+  "يُعرض آخر 100 سجل": "Showing the latest 100 records",
+  /* ---- الشيكات ---- */
+  "واردة وصادرة · استحقاق · تحصيل وصرف": "Incoming & outgoing · due dates · collection & payment",
+  "دورة كاملة: استلام · إيداع · تحصيل · تظهير · ارتداد · وإصدار وصرف الشيكات الصادرة": "Full cycle: receive · deposit · collect · endorse · bounce · and issue/pay outgoing cheques",
+  "شيك جديد": "New cheque", "شيكات واردة (من العملاء": "Incoming cheques (from customers", "شيكات صادرة (للموردين": "Outgoing cheques (to suppliers", "بحث (رقم / طرف / بنك / ملاحظات": "Search (no. / party / bank / notes",
+  "استحقاق من": "Due from", "استحقاق إلى": "Due to", "في الحافظة / مودعة": "In hand / deposited", "مستحقة الآن": "Due now", "تستحق خلال 7 أيام": "Due within 7 days", "محصّلة / مظهّرة": "Collected / endorsed",
+  "مرتجعة": "Bounced", "معلّقة (التزامات": "Pending (liabilities", "مستحقة الصرف": "Due for payment", "خلال 7 أيام": "within 7 days", "مصروفة": "Paid out", "رقم الشيك": "Cheque no.", "البنك": "Bank",
+  "الاستحقاق": "Due date", "مستحق": "Due", "بعد": "after", "لا توجد شيكات": "No cheques", "إيداع": "Deposit", "تظهير": "Endorse", "ارتداد": "Bounce", "صرف": "Pay out", "تراجع": "Undo",
+  "تعديل شيك #": "Edit cheque #", "استلام شيك من عميل": "Receive a cheque from a customer", "إصدار شيك لمورد": "Issue a cheque to a supplier", "تاريخ الإصدار": "Issue date", "تاريخ الاستحقاق": "Due date",
+  "البنك المسحوب عليه": "Drawee bank", "الشيك تجاوز حالته الأولى — يمكن تعديل البيانات الوصفية فقط. استخدم «تراجع» لتعديل المبلغ.": "The cheque has moved past its first state — only descriptive data can be edited. Use “Undo” to change the amount.",
+  "حذف الشيك؟ سيتم عكس كل آثاره على الطرف والبنك والخزينة والقيود.": "Delete the cheque? All its effects on the party, bank, register and entries will be reversed.",
+  "التراجع إلى الحالة الأولى وعكس آثار الحالة الحالية؟": "Revert to the first state and reverse the effects of the current state?", "تم التراجع": "Reverted",
+  "إيداع الشيك بالبنك": "Deposit the cheque at the bank", "تحصيل الشيك": "Collect the cheque", "تظهير الشيك لمورد": "Endorse the cheque to a supplier", "صرف الشيك": "Pay the cheque",
+  "ارتداد الشيك": "Bounce the cheque", "إلغاء الشيك": "Cancel the cheque", "سيعود المبلغ على رصيد": "The amount will return to the balance of", "التحصيل في": "Collect into",
+  "حساب بنكي": "Bank account", "خزينة (نقدًا": "Cash register (cash", "الحساب البنكي": "Bank account", "أضف حسابًا بنكيًا أولًا": "Add a bank account first", "أضف": "Add", "عميلًا": "a customer",
+  "موردًا": "a supplier", "أولًا": "first", "الطرف": "Party", "الإصدار": "Issued",
+  /* ---- لوحة التحكم ---- */
+  "تعذّر تحميل البيانات:": "Could not load data:", "المبيعات والمشتريات": "Sales & purchases", "أخرى": "Other", "لا توجد أصناف مخزنة": "No stocked products", "توزيع قيمة المخزون": "Stock value distribution",
+  "سند قبض": "Receipt voucher", "سند صرف": "Payment voucher", "سندات": "vouchers", "صباح الخير": "Good morning", "مساء الخير": "Good afternoon", "مساء النور": "Good evening", "مرحباً": "Welcome",
+  "أصناف": "products", "تحتاج إعادة طلب": "need reordering", "المخزون ضمن الحدود الآمنة": "Stock is within safe limits", "الفترة": "Period", "يوماً": "days", "فاتورة": "invoice",
+  "المقبوضات": "Receipts", "ذمم العملاء": "Customer receivables", "عميل مدين من": "customers owing out of", "النقدية بالخزائن": "Cash in registers", "نواقص المخزون": "Low stock", "صنف": "product",
+  "رواتب شهرية": "Monthly salaries", "موظف": "employee", "المبيعات مقابل المشتريات": "Sales vs purchases", "آخر": "Last", "يوماً · الفرق": "days · difference", "أعلى يوم مبيعاً": "Best sales day",
+  "متوسط المبيعات اليومي": "Average daily sales", "خلال": "during", "متوسط الفاتورة": "Average invoice", "توزيع المخزون": "Stock distribution", "حسب قيمة التكلفة": "by cost value",
+  "آخر فواتير البيع": "Latest sales invoices", "متبقي": "remaining", "مسدّدة": "Paid", "لا توجد فواتير بعد": "No invoices yet", "آخر النشاط": "Recent activity", "مباشر": "Live",
+  "لا يوجد نشاط بعد": "No activity yet", "تنبيهات المخزون": "Stock alerts", "سليم": "OK", "المخزون ضمن الحدود الآمنة ✓": "Stock is within safe limits ✓", "الحد الأدنى": "Minimum"
+});

@@ -370,7 +370,24 @@
     });
     return out;
   }
-  function mkItem(row) { return Object.assign({ id: uid(), created_at: new Date().toISOString() }, row); }
+  // هوية المستخدم الحالي (للتدقيق والقيود): مالك الشركة أو موظف بصلاحيات
+  function me() {
+    if (demoMode || !profile) return { id: "demo", name: "", owner: true, perms: [] };
+    return { id: profile.id, name: profile.full_name || "", owner: profile.company_role !== "staff", perms: Array.isArray(profile.permissions) ? profile.permissions : [] };
+  }
+  // القيود الإضافية على الموظف (deny:delete / deny:edit) — الغياب = مسموح (توافق مع الموظفين الحاليين)
+  function can(action) { var m = me(); return m.owner || m.perms.indexOf("deny:" + action) === -1; }
+  function assertCan(action) {
+    if (!can(action)) throw new Error(action === "delete" ? "غير مصرّح لك بالحذف — تواصل مع مالك الشركة" : "غير مصرّح لك بتعديل المستندات المحفوظة — تواصل مع مالك الشركة");
+  }
+  var GUARDED_DELETE = ["customers", "suppliers", "products", "accounts", "employees", "cash_registers", "treasury_tabs", "banks", "expenses", "warehouses",
+    "cheques", "cash_counts", "sales", "purchases", "sale_returns", "purchase_returns", "bank_movements"];
+  // يُختم كل سجل رئيسي بمن أنشأه (بدون سطور البنود/القيود لتقليل الحجم)
+  function mkItem(table, row) {
+    var base = { id: uid(), created_at: new Date().toISOString() };
+    if (!/_lines$/.test(table)) { var u = me(); base.by = u.id; if (u.name) base.by_name = u.name; }
+    return Object.assign(base, row);
+  }
   async function insert(table, row) {
     var out = await insertRows([{ table: table, row: row }]);
     return out[0];
@@ -379,7 +396,8 @@
   async function insertRows(items) {
     if (fatal) throw new Error(fatal);
     if (!items.length) return [];
-    var made = items.map(function (x) { return { table: x.table, item: mkItem(x.row) }; });
+    if (!demoMode) await ready();                       // لازم الملف الشخصي محمّل قبل ختم المستخدم
+    var made = items.map(function (x) { return { table: x.table, item: mkItem(x.table, x.row) }; });
     if (demoMode) {
       var d = loadDemo();
       made.forEach(function (m) {
@@ -424,7 +442,10 @@
     cSet(table, id, Object.assign({}, merged, { id: id, created_at: cur.data.created_at }));
     return merged;
   }
-  async function remove(table, id) { return removeMany(table, [id]); }
+  async function remove(table, id) {
+    if (GUARDED_DELETE.indexOf(table) !== -1) assertCan("delete");
+    return removeMany(table, [id]);
+  }
   async function removeMany(table, ids) {
     if (fatal) throw new Error(fatal);
     ids = (ids || []).filter(Boolean);
@@ -535,6 +556,9 @@
     saveCompany: saveCompany,
     resetDemo: resetDemo,
     nextNumber: nextNumber,
+    me: me,
+    can: can,
+    assertCan: assertCan,
     listWhere: listWhere,
     listWhereIn: listWhereIn,
     insertRows: insertRows,

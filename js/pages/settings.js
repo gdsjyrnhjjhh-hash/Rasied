@@ -43,6 +43,16 @@
       </div>
 
       <div class="card stack">
+        <h3 style="margin-top:0">المظهر وحجم العرض</h3>
+        <p class="muted" style="margin:0;font-size:13px">الحجم المدمج يُظهر بيانات أكثر في الشاشة ويمنع خروج الجداول العريضة من الصفحة. يُحفظ الاختيار على هذا الجهاز.</p>
+        <div class="field" style="max-width:260px"><label>حجم العرض</label><select id="density"><option value="compact">مدمج (موصى به)</option><option value="normal">عادي (أكبر)</option></select></div>
+      </div>
+      <div class="card stack">
+        <h3 style="margin-top:0">مستخدمو الشركة</h3>
+        <p class="muted" style="margin:0;font-size:13px">أضف أكثر من مستخدم لنفس الشركة (محاسب، أمين مخزن، مبيعات…) لكل واحد رقم هاتفه وكلمة مروره، وحدّد له الصفحات المسموحة، ويمكنك منعه من الحذف أو تعديل المستندات. يظهر اسم من أنشأ كل فاتورة وحركة خزينة.</p>
+        <div><a class="button primary" href="staff.html">إدارة مستخدمي الشركة</a></div>
+      </div>
+      <div class="card stack">
         <h3 style="margin-top:0">ضريبة القيمة المضافة</h3>
         <div class="form-grid">
           <div class="field"><label>تفعيل الضريبة</label>
@@ -112,4 +122,14 @@
     UI.toast("تمت إعادة الضبط");
     setTimeout(function () { location.reload(); }, 600);
   };
+  (function () {
+    var el = document.getElementById("density"); if (!el) return;
+    var cur = "compact"; try { cur = localStorage.getItem("trading_density") === "normal" ? "normal" : "compact"; } catch (e) {}
+    el.value = cur;
+    el.onchange = function () {
+      try { localStorage.setItem("trading_density", el.value); } catch (e) {}
+      if (el.value === "normal") document.documentElement.setAttribute("data-density", "normal"); else document.documentElement.removeAttribute("data-density");
+      UI.toast("تم تغيير حجم العرض");
+    };
+  })();
 })();

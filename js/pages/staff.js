@@ -39,12 +39,17 @@
         ${staff.map(function (m) {
           return html`<tr><td><b>${m.full_name}</b></td><td dir="ltr">${m.phone}</td>
             <td><span class="badge ${m.status === "active" ? "ok" : "err"}">${m.status === "active" ? "نشط" : "موقوف"}</span></td>
-            <td>${(m.permissions || []).length}</td><td>${m.days_used}</td><td>${m.login_count}</td><td dir="ltr" class="muted">${fmt(m.last_login_at)}</td>
+            <td>${(m.permissions || []).filter(function (x) { return x.indexOf("deny:") !== 0; }).length}${(m.permissions || []).some(function (x) { return x.indexOf("deny:") === 0; }) ? ' <span class="badge warn">مقيَّد</span>' : ""}</td><td>${m.days_used}</td><td>${m.login_count}</td><td dir="ltr" class="muted">${fmt(m.last_login_at)}</td>
             <td><button class="small" data-id="${m.id}">إدارة</button></td></tr>`;
         }).join("") || html`<tr><td colspan="8" class="empty">لم تضف موظفين بعد</td></tr>`}
       </tbody></table>`;
   }
 
+  var DENY = [["deny:delete", "منع الحذف (المستندات والحسابات والأصناف وغيرها)"], ["deny:edit", "منع تعديل المستندات المحفوظة (فواتير ومرتجعات وحركات الخزينة)"]];
+  function denyBoxes(sel) {
+    return '<div class="field full"><label>قيود إضافية <span class="muted" style="font-weight:400">(تُطبَّق على هذا الموظف فقط)</span></label><div class="row gap" style="flex-direction:column;align-items:flex-start">' +
+      DENY.map(function (d) { return '<label style="display:inline-flex;gap:6px;align-items:center;font-weight:500"><input type="checkbox" data-d="' + d[0] + '"' + (sel.indexOf(d[0]) !== -1 ? " checked" : "") + ">" + d[1] + "</label>"; }).join("") + "</div></div>";
+  }
   function permBoxes(sel) {
     return '<div class="field full"><label>الصفحات المسموحة <span class="muted" style="font-weight:400">(الرئيسية متاحة دائمًا)</span></label>' +
       '<div class="row gap" style="flex-wrap:wrap;margin-bottom:8px">' + Object.keys(PRESETS).map(function (k) { return '<button type="button" class="small ghost" data-preset="' + k + '">' + k + "</button>"; }).join("") +
@@ -62,7 +67,10 @@
       };
     });
   }
-  var picked = function (ov) { return Array.prototype.map.call(ov.querySelectorAll("[data-p]:checked"), function (c) { return c.getAttribute("data-p"); }); };
+  var picked = function (ov) {
+    return Array.prototype.map.call(ov.querySelectorAll("[data-p]:checked"), function (c) { return c.getAttribute("data-p"); })
+      .concat(Array.prototype.map.call(ov.querySelectorAll("[data-d]:checked"), function (c) { return c.getAttribute("data-d"); }));
+  };
 
   async function call(body) {
     var r = await client().functions.invoke("staff", { body: body });
@@ -81,6 +89,7 @@
         <div class="field"><label>رقم التليفون (يسجّل به الدخول)</label><input id="ph" dir="ltr" inputmode="tel" required></div>
         <div class="field"><label>كلمة المرور (6 أحرف على الأقل)</label><input id="pw" dir="ltr" required minlength="6"></div>
         ${permBoxes(["sales", "customers"])}
+        ${denyBoxes([])}
       </div>`, async function (o) {
       await call({ action: "create", full_name: val("n").trim(), phone: val("ph"), password: val("pw"), permissions: picked(o) });
       UI.toast("تمت إضافة الموظف"); o.remove(); await load();
@@ -94,6 +103,7 @@
         <div class="field"><label>الاسم</label><input id="n" value="${esc(m.full_name)}" required></div>
         <div class="field"><label>الحالة</label><select id="st"><option value="active" ${m.status === "active" ? "selected" : ""}>نشط</option><option value="suspended" ${m.status === "suspended" ? "selected" : ""}>موقوف</option></select></div>
         ${permBoxes(m.permissions || [])}
+        ${denyBoxes(m.permissions || [])}
         <div class="field full"><div class="row gap">
           <button type="button" class="small" id="rp">تغيير كلمة المرور</button>
           <button type="button" class="small danger" id="dl">حذف الموظف</button>

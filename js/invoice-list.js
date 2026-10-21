@@ -61,7 +61,7 @@ window.InvoiceList = {
           ${rows.map(function (d) {
             var due = N(d.total) - N(d.paid);
             return html`<tr data-id="${d.id}" class="${d.id === openId ? "editing" : ""}">
-              <td><b>#${d.number}</b></td><td dir="ltr" class="muted">${d.book_no || "—"}</td><td>${pname(d[K.pkey])}</td><td dir="ltr">${day(d)}</td>
+              <td><b>#${d.number}</b></td><td dir="ltr" class="muted">${d.book_no || "—"}</td><td>${pname(d[K.pkey])}</td><td dir="ltr">${day(d)}${d.by_name ? '<div class="muted" style="font-size:11px;direction:rtl">' + Ledger.esc(d.by_name) + "</div>" : ""}</td>
               <td><b>${money(d.total)}</b>${N(d.discount) > 0 ? ' <span class="badge">خصم ' + money(d.discount) + "</span>" : ""}</td>
               ${K.paidable ? html`<td>${money(d.paid)}</td><td class="${due > 0.004 ? "accent" : ""}">${money(due)}</td>` : ""}
               <td><div class="actions-cell">
