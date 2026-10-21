@@ -94,8 +94,9 @@
       return rows.map(function (r, i) {
         return html`<div class="form-grid" data-ri="${i}" style="margin-bottom:6px">
           <div class="field"><label>الحساب</label>
-            <select class="acc">${accounts.map(function (a) {
-              return html`<option value="${a.id}" ${a.id === r.account_id ? "selected" : ""}>${a.code} — ${a.name}</option>`;
+            <select class="acc">${Ledger.accountTree(accounts).map(function (n) {
+              var a = n.a, pad = new Array(n.level + 1).join("\u00A0\u00A0\u00A0");
+              return html`<option value="${a.id}" ${a.id === r.account_id ? "selected" : ""} ${n.hasKids && a.id !== r.account_id ? "disabled" : ""}>${pad}${Ledger.esc(a.code)} — ${Ledger.esc(a.name)}${n.hasKids ? " (رئيسي)" : ""}</option>`;
             }).join("")}</select>
           </div>
           <div class="field"><label>مدين</label><input class="db" type="number" step="0.01" value="${r.debit || ""}"></div>

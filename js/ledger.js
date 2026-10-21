@@ -98,6 +98,37 @@
     ]);
   }
 
+  // ---------- شجرة الحسابات ----------
+  // يرتّب الحسابات كشجرة (الأب ثم أبناؤه بالكود) ويُرجع [{a, level, hasKids}] — يتجاهل الأب المفقود/الدائري
+  function accountTree(list) {
+    var byId = {}, kids = {};
+    list.forEach(function (a) { byId[a.id] = a; });
+    list.forEach(function (a) {
+      var p = a.parent && a.parent !== a.id && byId[a.parent] ? a.parent : "";
+      (kids[p] = kids[p] || []).push(a);
+    });
+    var cmp = function (x, y) { return String(x.code || "").localeCompare(String(y.code || ""), "en", { numeric: true }); };
+    var out = [], seen = {};
+    (function walk(pid, level) {
+      (kids[pid] || []).sort(cmp).forEach(function (a) {
+        if (seen[a.id]) return; seen[a.id] = 1;
+        out.push({ a: a, level: level, hasKids: !!(kids[a.id] && kids[a.id].length) });
+        walk(a.id, level + 1);
+      });
+    })("", 0);
+    list.forEach(function (a) { if (!seen[a.id]) out.push({ a: a, level: 0, hasKids: false }); });   // حلقات مفقودة
+    return out;
+  }
+  // معرّفات كل أحفاد حساب (لمنع جعل الحساب تابعًا لنفسه/لأحد أبنائه)
+  function accountDescendants(list, id) {
+    var res = {}, stack = [id];
+    while (stack.length) {
+      var cur = stack.pop();
+      list.forEach(function (a) { if (a.parent === cur && !res[a.id]) { res[a.id] = 1; stack.push(a.id); } });
+    }
+    return res;
+  }
+
   /* ---------- حركة خزينة ---------- */
   // type: in | out | transfer_in | transfer_out | opening
   async function treasuryMove(o) {
@@ -275,7 +306,7 @@
   window.Ledger = {
     trial: trial,
     modal: modal, esc: esc, val: val,
-    KIND_LABEL: KIND_LABEL, statement: statement, recompute: recompute, recomputeAll: recomputeAll,
+    KIND_LABEL: KIND_LABEL, accountTree: accountTree, accountDescendants: accountDescendants, statement: statement, recompute: recompute, recomputeAll: recomputeAll,
     treasuryMove: treasuryMove, transfer: transfer, treasuryStatement: treasuryStatement,
     recordPayment: recordPayment, recordAdjustment: recordAdjustment, today: today,
   };

@@ -92,5 +92,63 @@
     a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
-  window.Xlsx = { build: build, download: download };
+
+  /* ---------- قراءة xlsx (الورقة الأولى) — تتطلب DecompressionStream (Chrome 80+/Safari 16.4+/Firefox 113+) ---------- */
+  function unesc(t) {
+    return String(t).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(+n); }).replace(/&#x([0-9a-f]+);/gi, function (m, n) { return String.fromCharCode(parseInt(n, 16)); }).replace(/&amp;/g, "&");
+  }
+  async function inflate(raw) {
+    if (typeof DecompressionStream === "undefined") throw new Error("المتصفح لا يدعم قراءة xlsx — استخدم ملف CSV أو متصفحًا أحدث");
+    var st = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(st).arrayBuffer());
+  }
+  function colIdx(ref) { var m = /^([A-Z]+)/.exec(ref), n = 0; for (var i = 0; i < m[1].length; i++) n = n * 26 + (m[1].charCodeAt(i) - 64); return n - 1; }
+  async function read(file) {
+    var buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer, buf.byteOffset, buf.length), i;
+    for (i = buf.length - 22; i >= 0; i--) if (dv.getUint32(i, true) === 0x06054b50) break;
+    if (i < 0) throw new Error("الملف ليس xlsx صالحًا");
+    var cnt = dv.getUint16(i + 10, true), p = dv.getUint32(i + 16, true), dec = new TextDecoder("utf-8"), entries = {};
+    for (var n = 0; n < cnt; n++) {
+      var nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+      entries[dec.decode(buf.subarray(p + 46, p + 46 + nl))] = { method: dv.getUint16(p + 10, true), csize: dv.getUint32(p + 20, true), lho: dv.getUint32(p + 42, true) };
+      p += 46 + nl + el + cl;
+    }
+    async function text(name) {
+      var e = entries[name]; if (!e) return null;
+      var start = e.lho + 30 + dv.getUint16(e.lho + 26, true) + dv.getUint16(e.lho + 28, true), raw = buf.subarray(start, start + e.csize);
+      return dec.decode(e.method === 0 ? raw : await inflate(raw));
+    }
+    var shared = [], ss = await text("xl/sharedStrings.xml");
+    if (ss) (ss.match(/<si[ >][\s\S]*?<\/si>|<si\/>/g) || []).forEach(function (si) {
+      var out = ""; (si.match(/<t[^>]*>[\s\S]*?<\/t>/g) || []).forEach(function (t) { out += unesc(t.replace(/<[^>]+>/g, "")); }); shared.push(out);
+    });
+    var sheetPath = "xl/worksheets/sheet1.xml", wb = await text("xl/workbook.xml"), rels = await text("xl/_rels/workbook.xml.rels");
+    if (wb && rels) {
+      var rid = (/<sheet [^>]*r:id="([^"]+)"/.exec(wb) || [])[1];
+      var rm = rid && new RegExp('<Relationship [^>]*Id="' + rid + '"[^>]*>').exec(rels);
+      var tg = rm && /Target="([^"]+)"/.exec(rm[0]);
+      if (tg) sheetPath = tg[1].charAt(0) === "/" ? tg[1].slice(1) : "xl/" + tg[1];
+    }
+    var xml = await text(sheetPath);
+    if (!xml) throw new Error("لا توجد ورقة بيانات في الملف");
+    var rows = [];
+    (xml.match(/<row[ >][\s\S]*?<\/row>/g) || []).forEach(function (rx) {
+      var rn = +(/ r="(\d+)"/.exec(rx) || [0, rows.length + 1])[1], row = [];
+      (rx.match(/<c [^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || []).forEach(function (cx) {
+        var ref = /r="([A-Z]+\d+)"/.exec(cx); if (!ref) return;
+        var t = (/ t="([^"]+)"/.exec(cx) || [])[1], v = (/<v[^>]*>([\s\S]*?)<\/v>/.exec(cx) || [])[1], val = "";
+        if (t === "inlineStr") val = unesc((cx.match(/<t[^>]*>[\s\S]*?<\/t>/g) || []).map(function (x) { return x.replace(/<[^>]+>/g, ""); }).join(""));
+        else if (v != null) { if (t === "s") val = shared[+v] || ""; else if (t === "str" || t === "e") val = unesc(v); else if (t === "b") val = v === "1"; else val = isNaN(+v) ? unesc(v) : +v; }
+        row[colIdx(ref[1])] = val;
+      });
+      for (var k = 0; k < row.length; k++) if (row[k] === undefined) row[k] = "";
+      rows[rn - 1] = row;
+    });
+    for (var r = 0; r < rows.length; r++) if (!rows[r]) rows[r] = [];
+    return rows;
+  }
+  // رقم تسلسلي في Excel → YYYY-MM-DD
+  function serialToISO(n) { var d = new Date(Math.round((Number(n) - 25569) * 86400000)); return isNaN(d) ? "" : d.toISOString().slice(0, 10); }
+  window.Xlsx = { build: build, download: download, read: read, serialToISO: serialToISO };
 })();

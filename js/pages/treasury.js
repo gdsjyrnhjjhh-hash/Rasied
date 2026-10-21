@@ -98,19 +98,21 @@
         <button type="button" id="b-csv">تصدير Excel</button>
         <button type="button" id="b-print">طباعة PDF</button>
         <button type="button" id="b-imp">استيراد Excel</button>
+        <button type="button" id="b-tpl">قالب الاستيراد</button>
         <button type="button" id="b-ref">تحديث</button>
-        <input type="file" id="imp-file" accept=".csv,text/csv" style="display:none">
+        <input type="file" id="imp-file" accept=".xlsx,.csv,text/csv" style="display:none">
       </div>`;
     document.getElementById("reg-sel").onchange = function () { qs.set("id", val("reg-sel")); history.replaceState(null, "", "?id=" + val("reg-sel")); load(); };
     document.getElementById("b-count").onclick = openCount;
     document.getElementById("b-add").onclick = function () { openMove(null); };
     document.getElementById("b-open").onclick = openOpening;
     document.getElementById("b-tr").onclick = toggleTransfer;
-    document.getElementById("b-csv").onclick = exportCsv;
+    document.getElementById("b-csv").onclick = exportXlsx;
+    document.getElementById("b-tpl").onclick = downloadTemplate;
     document.getElementById("b-print").onclick = printIt;
     document.getElementById("b-ref").onclick = function () { load(); UI.toast("تم التحديث"); };
     document.getElementById("b-imp").onclick = function () { document.getElementById("imp-file").click(); };
-    document.getElementById("imp-file").onchange = importCsv;
+    document.getElementById("imp-file").onchange = importFile;
   }
 
   var view = [];
@@ -347,9 +349,26 @@
   }
 
   /* ---------- تصدير / طباعة / استيراد ---------- */
-  function exportCsv() {
-    UI.exportCSV("خزينة-" + reg.name + ".csv", ["رقم الحركة", "التاريخ", "البيان", "النوع", "وارد", "صادر", "التبويب العام", "التبويب الخاص", "الرصيد"],
-      view.map(function (m) { return [m._n, m._d, m.notes || "", (TYPE[m.type || m.kind] || [""])[0], isPlus(m) ? N(m.amount) : "", isPlus(m) ? "" : N(m.amount), tabName(m.tab_id), tabName(m.ptab_id), m._bal]; }));
+  function exportXlsx() {
+    var co = DB.getCompany(), H = ["رقم الحركة", "التاريخ", "البيان", "النوع", "وارد", "صادر", "التبويب العام", "التبويب الخاص", "الرصيد"];
+    var rows = [[{ v: (co.name || "") + " — خزينة: " + reg.name, s: "title" }],
+      [{ v: "الرصيد الحالي: " + money(reg.balance) + (UI.currency() ? " " + UI.currency() : "") + " — عدد الحركات: " + view.length, s: "boldtext" }],
+      H.map(function (h) { return { v: h, s: "head" }; })];
+    view.forEach(function (m) {
+      rows.push([{ v: m._n, s: "date" }, { v: m._d, s: "date" }, { v: m.notes || "", s: "text" }, { v: (TYPE[m.type || m.kind] || [""])[0], s: "text" },
+        isPlus(m) ? N(m.amount) : { v: "", s: "num" }, isPlus(m) ? { v: "", s: "num" } : N(m.amount), { v: tabName(m.tab_id), s: "text" }, { v: tabName(m.ptab_id), s: "text" }, m._bal]);
+    });
+    Xlsx.download("خزينة-" + String(reg.name).replace(/[\\\/:*?"<>|]+/g, " ") + ".xlsx", { sheet: "الخزينة", cols: [10, 13, 44, 14, 14, 14, 22, 22, 16], merges: ["A1:I1", "A2:I2"], rows: rows });
+  }
+  function downloadTemplate() {
+    var H = ["التاريخ", "البيان", "النوع", "وارد", "صادر", "رقم السند", "التبويب العام", "التبويب الخاص"];
+    var gen = tabs.filter(function (t) { return t.kind !== "private"; })[0], prv = tabs.filter(function (t) { return t.kind === "private"; })[0];
+    Xlsx.download("قالب-استيراد-الخزينة.xlsx", { sheet: "الحركات", cols: [14, 40, 12, 14, 14, 12, 22, 22], merges: [], rows: [
+      H.map(function (h) { return { v: h, s: "head" }; }),
+      [{ v: today, s: "date" }, { v: "مثال: تحصيل من عميل", s: "text" }, { v: "وارد", s: "text" }, 1000, { v: "", s: "num" }, { v: "", s: "text" }, { v: gen ? gen.name : "", s: "text" }, { v: prv ? prv.name : "", s: "text" }],
+      [{ v: today, s: "date" }, { v: "مثال: مصروف إيجار", s: "text" }, { v: "منصرف", s: "text" }, { v: "", s: "num" }, 500, { v: "", s: "text" }, { v: "", s: "text" }, { v: "", s: "text" }],
+      [{ v: "ملاحظات: اكتب إما «وارد» أو «صادر» لكل صف. التبويبان اختياريان ويجب أن يطابقا أسماء التبويبات الموجودة. عمود «رقم السند» يُتجاهل. الصفوف بمبلغ صفر تُتخطّى.", s: "boldtext" }],
+    ] });
   }
   function printIt() {
     var co = DB.getCompany();
@@ -358,36 +377,91 @@
       "<table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>وارد</th><th>صادر</th><th>الرصيد</th></tr></thead><tbody>" +
       view.map(function (m) { return "<tr><td>" + m._n + "</td><td>" + m._d + "</td><td>" + esc(m.notes || "") + "</td><td>" + (isPlus(m) ? money(m.amount) : "") + "</td><td>" + (isPlus(m) ? "" : money(m.amount)) + "</td><td>" + money(m._bal) + "</td></tr>"; }).join("") + "</tbody></table>");
   }
-  function importCsv(e) {
+  function parseCsv(text) {
+    var rows = [], row = [], cur = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charAt(i);
+      if (q) { if (c === '"') { if (text.charAt(i + 1) === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === "," || c === ";" || c === "\t") { row.push(cur); cur = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text.charAt(i + 1) === "\n") i++; row.push(cur); cur = ""; if (row.some(function (x) { return x !== ""; })) rows.push(row); row = []; }
+      else cur += c;
+    }
+    row.push(cur); if (row.some(function (x) { return x !== ""; })) rows.push(row);
+    return rows;
+  }
+  function toNum(v) {
+    if (typeof v === "number") return v;
+    var t = norm(v).replace(/[,\s]/g, ""); if (t === "") return 0;
+    var n = Number(t); return isNaN(n) ? NaN : n;
+  }
+  function toDate(v) {
+    if (typeof v === "number" && v > 20000) return Xlsx.serialToISO(v);
+    var t = norm(v).trim(), m;
+    if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(t))) return m[1] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
+    if ((m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/.exec(t))) return m[3] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);   // يوم/شهر/سنة
+    return "";
+  }
+  async function importFile(e) {
     var file = e.target.files[0]; if (!file) return;
-    var rd = new FileReader();
-    rd.onload = async function () {
-      try {
-        var lines = String(rd.result).replace(/^﻿/, "").split(/\r?\n/).filter(function (l) { return l.trim(); }).slice(1);
-        // الأعمدة: التاريخ، البيان، وارد، صادر — كل الحركات في طلب واحد ورصيد الخزينة يُحدَّث مرة واحدة
-        var cur = await Promise.all([DB.get("cash_registers", reg.id, { fresh: true }), DB.listWhere("cash_movements", "register_id", reg.id)]);
-        var r0 = cur[0]; if (!r0) throw new Error("الخزينة غير موجودة");
-        var seq = 0;
-        cur[1].forEach(function (m) { if (N(m.seq) > seq) seq = N(m.seq); });
-        if (!seq) seq = cur[1].length;
-        var rows = [], delta = 0;
-        lines.forEach(function (ln) {
-          var c = ln.split(","), date = (c[0] || "").trim() || today, notes = (c[1] || "").trim(), inc = N(c[2]), out = N(c[3]);
-          var k = inc > 0 ? "in" : (out > 0 ? "out" : ""); if (!k) return;
-          var amt = k === "in" ? inc : out;
-          seq++; delta += k === "in" ? amt : -amt;
-          rows.push({ table: "cash_movements", row: {
-            seq: seq, ref: "", ptab_id: "", register_id: reg.id, type: k, kind: k, amount: amt, date: date, notes: notes, tab_id: "",
-            party_type: "", party_id: "", grp: "", counterpart: "" } });
+    e.target.value = "";
+    try {
+      var table = /\.xlsx$/i.test(file.name) ? await Xlsx.read(file) : parseCsv(String(await file.text()).replace(/^\uFEFF/, ""));
+      var hi = -1, i;
+      for (i = 0; i < Math.min(table.length, 15) && hi < 0; i++) if ((table[i] || []).some(function (c) { return norm(c).trim() === "التاريخ"; })) hi = i;
+      var col = { date: 0, notes: 1, inc: 2, out: 3, type: -1, amount: -1, gtab: -1, ptab: -1 };
+      if (hi >= 0) {
+        col = { date: -1, notes: -1, inc: -1, out: -1, type: -1, amount: -1, gtab: -1, ptab: -1 };
+        table[hi].forEach(function (c, j) {
+          var h = norm(c).trim().replace(/\s+/g, " ");
+          if (h === "التاريخ") col.date = j; else if (/^(البيان|الوصف|ملاحظات|الملاحظات)$/.test(h)) col.notes = j;
+          else if (h === "وارد") col.inc = j; else if (h === "صادر" || h === "منصرف") col.out = j;
+          else if (h === "النوع") col.type = j; else if (h === "المبلغ") col.amount = j;
+          else if (h === "التبويب العام") col.gtab = j; else if (h === "التبويب الخاص") col.ptab = j;
         });
-        if (rows.length) {
-          await DB.insertRows(rows);
-          await DB.update("cash_registers", reg.id, { balance: N(r0.balance) + delta });
+        if (col.date < 0 || (col.inc < 0 && col.out < 0 && col.amount < 0)) throw new Error("لم أجد أعمدة «التاريخ» و«وارد/صادر» — حمّل «قالب الاستيراد»");
+      }
+      var nameKey = function (x) { return norm(x).replace(/[_\s]+/g, " ").trim(); };
+      var gmap = {}, pmap = {};
+      tabs.forEach(function (t) { (t.kind === "private" ? pmap : gmap)[nameKey(t.name)] = t.id; });
+      var items = [], skipped = 0, zero = 0, badTabs = {};
+      for (i = hi >= 0 ? hi + 1 : 1; i < table.length; i++) {
+        var r = table[i] || [];
+        if (!r.some(function (c) { return c !== "" && c != null; })) continue;
+        var date = toDate(r[col.date]);
+        var inc = col.inc >= 0 ? toNum(r[col.inc]) : 0, out = col.out >= 0 ? toNum(r[col.out]) : 0;
+        if (isNaN(inc) || isNaN(out) || !date) { skipped++; continue; }
+        var k = inc > 0 ? "in" : (out > 0 ? "out" : ""), amt = inc > 0 ? inc : out;
+        if (!k && col.amount >= 0) {
+          var a = toNum(r[col.amount]), t = col.type >= 0 ? norm(r[col.type]) : "";
+          if (a > 0) { if (/وارد|ايراد|قبض|تحصيل/.test(t)) { k = "in"; amt = a; } else if (/منصرف|صادر|صرف|سداد/.test(t)) { k = "out"; amt = a; } }
         }
-        UI.toast("تم استيراد " + rows.length + " حركة"); await load();
-      } catch (err) { UI.toast(err.message || "تعذّر الاستيراد", true); }
-    };
-    rd.readAsText(file); e.target.value = "";
+        if (!k) { zero++; continue; }
+        var gname = col.gtab >= 0 ? String(r[col.gtab] || "").trim() : "", pname = col.ptab >= 0 ? String(r[col.ptab] || "").trim() : "";
+        var gid = gname ? gmap[nameKey(gname)] || "" : "", pid = pname ? pmap[nameKey(pname)] || "" : "";
+        if (gname && !gid) badTabs[gname] = 1; if (pname && !pid) badTabs[pname] = 1;
+        items.push({ date: date, notes: String(r[col.notes] == null ? "" : r[col.notes]).trim(), k: k, amt: amt, gid: gid, pid: pid });
+      }
+      if (!items.length) throw new Error("لا توجد حركات صالحة للاستيراد");
+      var sumIn = 0, sumOut = 0; items.forEach(function (x) { if (x.k === "in") sumIn += x.amt; else sumOut += x.amt; });
+      var bad = Object.keys(badTabs);
+      if (!confirm("سيتم استيراد " + items.length + " حركة إلى «" + reg.name + "»\nوارد: " + money(sumIn) + " — منصرف: " + money(sumOut) +
+        (zero ? "\nتخطّي " + zero + " صف بمبلغ صفر" : "") + (skipped ? "\nتخطّي " + skipped + " صف بتاريخ/مبلغ غير صالح" : "") +
+        (bad.length ? "\nتبويبات غير موجودة (ستُترك فارغة): " + bad.slice(0, 5).join("، ") + (bad.length > 5 ? "…" : "") : "") + "\nمتابعة؟")) return;
+      var cur = await Promise.all([DB.get("cash_registers", reg.id, { fresh: true }), DB.listWhere("cash_movements", "register_id", reg.id)]);
+      var r0 = cur[0]; if (!r0) throw new Error("الخزينة غير موجودة");
+      var seq = 0; cur[1].forEach(function (m) { if (N(m.seq) > seq) seq = N(m.seq); });
+      if (!seq) seq = cur[1].length;
+      var delta = 0;
+      var rows = items.map(function (x) {
+        seq++; delta += x.k === "in" ? x.amt : -x.amt;
+        return { table: "cash_movements", row: { seq: seq, ref: "", ptab_id: x.pid, register_id: reg.id, type: x.k, kind: x.k, amount: x.amt, date: x.date, notes: x.notes,
+          tab_id: x.gid, party_type: "", party_id: "", grp: "", counterpart: "" } };
+      });
+      await DB.insertRows(rows);
+      await DB.update("cash_registers", reg.id, { balance: N(r0.balance) + delta });
+      UI.toast("تم استيراد " + rows.length + " حركة"); await load();
+    } catch (err) { UI.toast(err.message || "تعذّر الاستيراد", true); }
   }
 
   document.getElementById("f-text").oninput = function () { f.text = val("f-text"); draw(); };

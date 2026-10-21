@@ -27,12 +27,25 @@
     return b.credit - b.debit;
   }
 
-  var trialRows = Object.keys(bal).map(function (id) { return bal[id]; })
-    .filter(function (b) { return b.debit || b.credit; })
-    .sort(function (a, b) { return (a.acc.code || "").localeCompare(b.acc.code || ""); });
+  // ميزان المراجعة بالشجرة: الحساب الرئيسي يعرض مجموع نفسه + فروعه، والإجماليات تُحسب من الأرصدة الذاتية فقط (بلا ازدواج)
+  var treeNodes = Ledger.accountTree(accounts), childrenOf = {}, rolled = {};
+  accounts.forEach(function (a) { if (a.parent && bal[a.parent] && a.parent !== a.id) (childrenOf[a.parent] = childrenOf[a.parent] || []).push(a.id); });
+  accounts.forEach(function (a) {
+    (function roll(id, seen) {
+      if (rolled[id]) return rolled[id];
+      var r = { debit: bal[id].debit, credit: bal[id].credit };
+      if (seen[id]) return r; seen[id] = 1;
+      (childrenOf[id] || []).forEach(function (cid) { var c = roll(cid, seen); r.debit += c.debit; r.credit += c.credit; });
+      return (rolled[id] = r);
+    })(a.id, {});
+  });
+  var trialRows = treeNodes.map(function (n) {
+    var r = rolled[n.a.id] || { debit: 0, credit: 0 };
+    return { acc: n.a, debit: r.debit, credit: r.credit, level: n.level, group: n.hasKids };
+  }).filter(function (b) { return b.debit || b.credit; });
 
-  var totalDebit = trialRows.reduce(function (s, b) { return s + b.debit; }, 0);
-  var totalCredit = trialRows.reduce(function (s, b) { return s + b.credit; }, 0);
+  var totalDebit = Object.keys(bal).reduce(function (s, id) { return s + bal[id].debit; }, 0);
+  var totalCredit = Object.keys(bal).reduce(function (s, id) { return s + bal[id].credit; }, 0);
 
   var revenue = 0, expense = 0;
   Object.keys(bal).forEach(function (id) {
@@ -57,7 +70,7 @@
     UI.exportCSV("trial-balance.csv",
       ["الكود", "الحساب", "مدين", "دائن", "الرصيد"],
       trialRows.map(function (b) {
-        return [b.acc.code, b.acc.name, b.debit, b.credit, net(b)];
+        return [b.acc.code, new Array(b.level + 1).join("   ") + b.acc.name + (b.group ? " (مجموع المجموعة)" : ""), b.debit, b.credit, net(b)];
       }));
     UI.toast("تم تصدير ميزان المراجعة");
   }
@@ -155,8 +168,8 @@
             <tbody>
               ${trialRows.map(function (b) {
                 return html`<tr>
-                  <td dir="ltr">${b.acc.code}</td>
-                  <td>${b.acc.name}</td>
+                  <td dir="ltr">${Ledger.esc(b.acc.code)}</td>
+                  <td style="padding-inline-start:${b.level * 22 + 8}px;${b.group ? "font-weight:700" : ""}">${Ledger.esc(b.acc.name)}${b.group ? ' <span class="badge">مجموع المجموعة</span>' : ""}</td>
                   <td>${b.debit ? money(b.debit) : ""}</td>
                   <td>${b.credit ? money(b.credit) : ""}</td>
                   <td>${money(net(b))}</td>

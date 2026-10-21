@@ -108,6 +108,19 @@ I18n.add({
   "بحث (رقم / دفتر / ملاحظات)": "Search (no. / book / notes)", "حذف هذا المستند؟ سيتم عكس أثره على المخزون والحساب والقيود وحركة الخزينة المرتبطة.": "Delete this document? Its effect on stock, account, entries and linked cash movement will be reversed.",
   "إلغاء هذا المرتجع؟ سيتم عكس أثره على المخزون والحساب والقيود.": "Cancel this return? Its effect on stock, account and entries will be reversed.",
   "قيد": "Entry", "دفعة على فاتورة": "Payment on invoice", "سداد فاتورة": "Invoice payment", "تحصيل فاتورة بيع": "Sales invoice collection", "سداد فاتورة شراء": "Purchase invoice payment",
+  /* ---- دليل الحسابات ---- */
+  "شجرة الحسابات المالية — حساب رئيسي وتحته حسابات فرعية": "Chart of accounts — parent accounts with sub-accounts", "+ حساب جديد": "+ New account",
+  "بحث بالكود أو الاسم...": "Search by code or name...", "كل الأنواع": "All types", "توسيع الكل": "Expand all", "طي الكل": "Collapse all", "اسم الحساب": "Account name",
+  "المستوى": "Level", "رئيسي": "Parent", "فرعي": "Sub-account", "+ فرعي": "+ Sub", "لا توجد حسابات": "No accounts", "حساب جديد": "New account", "تعديل حساب": "Edit account",
+  "الحساب الرئيسي (يوضع هذا الحساب تحته)": "Parent account (this account goes under it)", "— بدون (حساب رئيسي مستقل) —": "— None (top-level account) —", "النوع": "Type",
+  "النوع يتبع الحساب الرئيسي": "The type follows the parent account", "أكمل الكود والاسم": "Enter the code and name", "الكود مستخدم بالفعل في الحساب:": "This code is already used by account:",
+  "لا يمكن جعل الحساب تابعًا لنفسه أو لأحد أبنائه": "An account cannot be placed under itself or one of its children",
+  "لا يمكن حذف حساب رئيسي له حسابات فرعية — احذفها أو انقلها أولًا": "Cannot delete a parent account that has sub-accounts — delete or move them first",
+  "لا يمكن حذف حساب عليه حركات قيود": "Cannot delete an account with journal entries", "حذف الحساب؟": "Delete the account?", "تم الحذف": "Deleted", "الحساب": "Account", "مدين": "Debit", "دائن": "Credit",
+
+  "مجموع المجموعة": "Group total", "ميزان المراجعة": "Trial balance", "متوازن": "Balanced", "غير متوازن": "Unbalanced",
+  "قالب الاستيراد": "Import template", "استيراد Excel": "Import Excel", "طباعة PDF": "Print PDF", "رصيد افتتاحي": "Opening balance", "تحويل بين الخزائن": "Transfer between registers",
+  "رقم الحركة": "Movement no.", "وارد": "In", "صادر": "Out", "منصرف": "Out", "التبويب العام": "General tab", "التبويب الخاص": "Private tab",
   /* ---- أنواع الحسابات ---- */
   "أصول": "Assets", "خصوم": "Liabilities", "حقوق ملكية": "Equity", "إيرادات": "Revenue", "مصروفات": "Expenses",
   /* ---- تسجيل الدخول ---- */
