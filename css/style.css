@@ -1088,3 +1088,10 @@ html.dark mark{background:#854d0e}
 .table-wrap { max-width: 100%; }
 :root:not([data-density="normal"]) tbody td { overflow-wrap: anywhere; }
 :root:not([data-density="normal"]) td[dir="ltr"], :root:not([data-density="normal"]) td.nw { overflow-wrap: normal; }
+
+/* ===== v36 — شعار رصيد في القائمة وصفحة الدخول ===== */
+.brand-logo { width: 42px; height: 42px; flex: none; object-fit: contain; display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+.brand b { font-size: 14.5px; letter-spacing: 0; }
+.auth-brand { display: flex; align-items: center; gap: 14px; }
+.auth-brand .brand-logo { width: 52px; height: 52px; }
+.auth-brand b { font-size: 20px; }

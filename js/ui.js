@@ -403,6 +403,14 @@
     } catch (e) {}
   }
 
+  // أعلى القائمة: اسم النظام ثابت، والسطر الثاني اسم الشركة (إن وُجد) وإلا حالة الاتصال
+  var DEFAULT_BRAND = "نظام التجارة";
+  function brandHtml(brand, sub) {
+    var company = brand && brand !== DEFAULT_BRAND ? brand : "";
+    return "<b>نظام رصيد Rasied</b><span>" + escHtml(company || sub || "") + "</span>";
+  }
+  function escHtml(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
   function renderShell(active, title, ctx, brand, sub, demo) {
     var app = document.getElementById("app");
     var startCollapsed = false;
@@ -415,11 +423,8 @@
       <div class="layout${startCollapsed ? " collapsed" : ""}" id="layout">
         <aside class="sidebar">
           <div class="brand">
-            <div class="brand-icon">${ICON.building}</div>
-            <div class="brand-text" id="brand-text">
-              <b>${brand}</b>
-              <span>${sub}</span>
-            </div>
+            <img class="brand-logo" src="assets/img/logo-128.png" width="42" height="42" alt="Rasied" />
+            <div class="brand-text" id="brand-text">${brandHtml(brand, sub)}</div>
           </div>
           <div class="sidebar-search-wrap">
             ${ICON.search}
@@ -500,7 +505,7 @@
       if (q && q.value) q.dispatchEvent(new Event("input"));
     }
     var bt = document.getElementById("brand-text");
-    if (bt && (shell.brand !== brand || shell.sub !== sub)) bt.innerHTML = "<b>" + brand + "</b><span>" + sub + "</span>";
+    if (bt && (shell.brand !== brand || shell.sub !== sub)) bt.innerHTML = brandHtml(brand, sub);
     var us = document.getElementById("user-slot");
     var uSig = function (c, b) { return JSON.stringify([c.pending, c.prof && c.prof.full_name, c.isAdmin, !!c.prof, b]); };
     if (us && uSig(shell.ctx, shell.brand) !== uSig(ctx, brand)) {

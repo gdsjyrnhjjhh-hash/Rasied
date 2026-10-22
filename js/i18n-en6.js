@@ -66,5 +66,6 @@ I18n.add({
   "كل الأكواد موجودة مسبقًا — لا جديد للاستيراد": "All codes already exist — nothing new to import", "لا توجد حسابات صالحة للاستيراد": "No valid accounts to import",
   "تعذّر تحديد نوع الحسابات:": "Could not determine the type of accounts:", "أضف عمود «النوع»": "add a “Type” column", "تم استيراد": "Imported", "حساب": "accounts",
   "سيتم إضافة": "About to add", "رئيسي": "parent", "فرعي": "sub", "كود موجود مسبقًا": "codes that already exist", "كود مكرر في الملف": "duplicate codes in the file",
-  "حسابات أبوها غير موجود (ستُضاف كرئيسية):": "Accounts whose parent was not found (will be added as top-level):", "قالب-استيراد-دليل-الحسابات.xlsx": "chart-of-accounts-template.xlsx"
+  "حسابات أبوها غير موجود (ستُضاف كرئيسية):": "Accounts whose parent was not found (will be added as top-level):", "قالب-استيراد-دليل-الحسابات.xlsx": "chart-of-accounts-template.xlsx",
+  "نظام رصيد Rasied": "Rasied System", "نظام رصيد": "Rasied System"
 });
