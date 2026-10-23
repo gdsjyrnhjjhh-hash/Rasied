@@ -1095,3 +1095,14 @@ html.dark mark{background:#854d0e}
 .auth-brand { display: flex; align-items: center; gap: 14px; }
 .auth-brand .brand-logo { width: 52px; height: 52px; }
 .auth-brand b { font-size: 20px; }
+
+/* ===== v38 — صفحة «إدارة المستخدمين» (admin): تصغير العرض 20% ===== */
+body[data-page="admin"] #page,
+body[data-page="admin"] .modal-overlay .modal { zoom: .8; }
+/* احتياطي لمتصفحات بلا دعم zoom: تصغير الخط والحشو بما يقارب 20% */
+@supports not (zoom: 1) {
+  body[data-page="admin"] #page, body[data-page="admin"] .modal-overlay .modal { font-size: 80%; }
+  body[data-page="admin"] #page table { font-size: 10px; }
+  body[data-page="admin"] #page thead th, body[data-page="admin"] #page tbody td { padding: 7px 8px; }
+  body[data-page="admin"] #page .stat .value { font-size: 80%; }
+}

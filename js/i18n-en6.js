@@ -67,5 +67,7 @@ I18n.add({
   "تعذّر تحديد نوع الحسابات:": "Could not determine the type of accounts:", "أضف عمود «النوع»": "add a “Type” column", "تم استيراد": "Imported", "حساب": "accounts",
   "سيتم إضافة": "About to add", "رئيسي": "parent", "فرعي": "sub", "كود موجود مسبقًا": "codes that already exist", "كود مكرر في الملف": "duplicate codes in the file",
   "حسابات أبوها غير موجود (ستُضاف كرئيسية):": "Accounts whose parent was not found (will be added as top-level):", "قالب-استيراد-دليل-الحسابات.xlsx": "chart-of-accounts-template.xlsx",
-  "نظام رصيد Rasied": "Rasied System", "نظام رصيد": "Rasied System"
+  "نظام رصيد Rasied": "Rasied System", "نظام رصيد": "Rasied System",
+  "لا توجد حسابات رئيسية لها فروع بعد — أضف حسابًا فرعيًا من زر «+ فرعي» بجانب أي حساب": "No parent accounts with sub-accounts yet — add a sub-account with the “+ Sub” button next to any account",
+  "الطي والتوسيع لا يعملان أثناء البحث — امسح البحث أولًا": "Collapse/expand does not work while searching — clear the search first"
 });

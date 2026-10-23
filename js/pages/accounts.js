@@ -21,8 +21,8 @@
       </div>
       <div class="stats" id="acc-stats"></div>
       <div class="row gap wrap">
-        <input id="q" placeholder="بحث بالكود أو الاسم..." style="max-width:340px">
-        <select id="ftype" style="max-width:200px"><option value="">كل الأنواع</option>${UI.ACCOUNT_TYPES.map(function (t) { return html`<option value="${t.key}">${t.label}</option>`; }).join("")}</select>
+        <input id="q" placeholder="بحث بالكود أو الاسم..." style="max-width:340px" autocomplete="off">
+        <select id="ftype" style="max-width:200px" autocomplete="off"><option value="">كل الأنواع</option>${UI.ACCOUNT_TYPES.map(function (t) { return html`<option value="${t.key}">${t.label}</option>`; }).join("")}</select>
         <button type="button" class="small" id="exp-all">توسيع الكل</button>
         <button type="button" class="small" id="col-all">طي الكل</button>
       </div>
@@ -42,21 +42,23 @@
 
     var q = (document.getElementById("q").value || "").trim().toLowerCase();
     var ft = document.getElementById("ftype").value;
-    var filtering = !!(q || ft);
+    var searching = !!q;                                   // البحث النصي يعرض المطابق مع مساره ويتجاهل الطي
     var tree = Ledger.accountTree(accounts), parentOf = {};
     accounts.forEach(function (a) { parentOf[a.id] = a.parent; });
     var visible = {};
-    if (filtering) {
+    if (searching) {
       tree.forEach(function (n) {
         var a = n.a;
-        if ((!ft || a.type === ft) && (!q || ((a.code || "") + " " + a.name).toLowerCase().indexOf(q) !== -1)) {
+        if ((!ft || a.type === ft) && ((a.code || "") + " " + a.name).toLowerCase().indexOf(q) !== -1) {
           visible[a.id] = 1;
           for (var p = parentOf[a.id], guard = 0; p && guard < 30; p = parentOf[p], guard++) visible[p] = 1;   // يظهر مسار الآباء
         }
       });
     }
+    var filtering = searching;
     var rows = tree.filter(function (n) {
-      if (filtering) return visible[n.a.id];
+      if (searching) return visible[n.a.id];
+      if (ft && n.a.type !== ft) return false;
       for (var p = parentOf[n.a.id], guard = 0; p && guard < 30; p = parentOf[p], guard++) if (collapsed[p]) return false;
       return true;
     });
@@ -326,8 +328,18 @@
   document.getElementById("btn-exp").onclick = exportXlsx;
   document.getElementById("q").oninput = render;
   document.getElementById("ftype").onchange = render;
-  document.getElementById("exp-all").onclick = function () { collapsed = {}; render(); };
-  document.getElementById("col-all").onclick = function () { accounts.forEach(function (a) { if (kidsOf(a.id).length) collapsed[a.id] = true; }); render(); };
+  function groupsCount() { return accounts.filter(function (a) { return kidsOf(a.id).length; }).length; }
+  function noGroupsMsg() {
+    if (!groupsCount()) { UI.toast("لا توجد حسابات رئيسية لها فروع بعد — أضف حسابًا فرعيًا من زر «+ فرعي» بجانب أي حساب", true); return true; }
+    if ((document.getElementById("q").value || "").trim()) { UI.toast("الطي والتوسيع لا يعملان أثناء البحث — امسح البحث أولًا", true); return true; }
+    return false;
+  }
+  document.getElementById("exp-all").onclick = function () { if (noGroupsMsg()) return; collapsed = {}; render(); };
+  document.getElementById("col-all").onclick = function () {
+    if (noGroupsMsg()) return;
+    accounts.forEach(function (a) { if (kidsOf(a.id).length) collapsed[a.id] = true; });
+    render();
+  };
   document.getElementById("list").onclick = async function (e) {
     var btn = e.target.closest("[data-act]");
     if (!btn) return;
