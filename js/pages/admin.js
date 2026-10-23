@@ -10,7 +10,9 @@
     return;
   }
 
-  var users = [], filter = "", statusF = "";
+  var users = [], compCount = {};
+  // حالة الفلاتر (تُبنى على حقول بيانات المستخدم: الحالة، الدور، تاريخ التسجيل، آخر ظهور، حجم البيانات، أيام الاستخدام، عدد مستخدمي الشركة)
+  var F = { q: "", status: "", role: "", reg: "", from: "", to: "", act: "", data: "", days: "", comp: "", sort: "created_desc" };
 
   var TBL = {
     customers: "العملاء", suppliers: "الموردين", warehouses: "المخازن", products: "الأصناف",
@@ -46,6 +48,8 @@
     var r = await client.rpc("admin_users");
     if (r.error) { page.innerHTML = '<div class="card error">تعذّر تحميل المستخدمين: ' + esc(r.error.message) + "</div>"; return false; }
     users = r.data || [];
+    compCount = {};
+    users.forEach(function (u) { compCount[u.company_id] = (compCount[u.company_id] || 0) + 1; });
     return true;
   }
 
@@ -56,19 +60,63 @@
     var onl = users.filter(online).length;
     var day = users.filter(function (u) { return u.last_seen_at && Date.now() - new Date(u.last_seen_at).getTime() < 86400000; }).length;
     return html`
-      <div class="stat blue"><div class="label">إجمالي المسجلين</div><div class="value">${num(users.length)}</div></div>
-      <div class="stat green"><div class="label">حسابات نشطة</div><div class="value">${num(active)}</div></div>
-      <div class="stat red"><div class="label">حسابات موقوفة</div><div class="value">${num(susp)}</div></div>
-      <div class="stat amber"><div class="label">انضموا آخر 7 أيام</div><div class="value">${num(week)}</div></div>
-      <div class="stat teal"><div class="label">نشطون آخر 24 ساعة</div><div class="value">${num(day)}</div><div class="muted" style="font-size:12px;margin-top:2px">${num(onl)} متصل الآن</div></div>`;
+      <div class="stat blue" data-quick="clear" style="cursor:pointer" title="عرض الكل"><div class="label">إجمالي المسجلين</div><div class="value">${num(users.length)}</div></div>
+      <div class="stat green" data-quick="status:active" style="cursor:pointer"><div class="label">حسابات نشطة</div><div class="value">${num(active)}</div></div>
+      <div class="stat red" data-quick="status:suspended" style="cursor:pointer"><div class="label">حسابات موقوفة</div><div class="value">${num(susp)}</div></div>
+      <div class="stat amber" data-quick="reg:7" style="cursor:pointer"><div class="label">انضموا آخر 7 أيام</div><div class="value">${num(week)}</div></div>
+      <div class="stat teal" data-quick="act:day" style="cursor:pointer"><div class="label">نشطون آخر 24 ساعة</div><div class="value">${num(day)}</div><div class="muted" style="font-size:12px;margin-top:2px">${num(onl)} متصل الآن</div></div>`;
   }
 
+  function ms(d) { return d ? new Date(d).getTime() : 0; }
+  function dayStart(v) { return v ? new Date(v + "T00:00:00").getTime() : 0; }
+  function dayEnd(v) { return v ? new Date(v + "T23:59:59.999").getTime() : 0; }
+  function matches(u) {
+    var now = Date.now(), q = F.q.trim().toLowerCase();
+    if (q && (u.full_name + " " + u.phone + " " + u.company_name).toLowerCase().indexOf(q) === -1) return false;
+    if (F.status && u.status !== F.status) return false;
+    if (F.role && (u.role === "admin" ? "admin" : "user") !== F.role) return false;
+    var created = ms(u.created_at);
+    if (F.reg && F.reg !== "older" && now - created > Number(F.reg) * 86400000) return false;
+    if (F.reg === "older" && now - created <= 90 * 86400000) return false;
+    if (F.from && created < dayStart(F.from)) return false;
+    if (F.to && created > dayEnd(F.to)) return false;
+    var seen = ms(u.last_seen_at), never = !u.login_count && !u.last_login_at && !u.last_seen_at;
+    if (F.act === "online" && !online(u)) return false;
+    if (F.act === "day" && !(seen && now - seen < 86400000)) return false;
+    if (F.act === "week" && !(seen && now - seen < 7 * 86400000)) return false;
+    if (F.act === "month" && !(seen && now - seen < 30 * 86400000)) return false;
+    if (F.act === "idle" && !(seen && now - seen >= 30 * 86400000)) return false;
+    if (F.act === "never" && !never) return false;
+    var rc = Number(u.records_count) || 0;
+    if (F.data === "none" && rc !== 0) return false;
+    if (F.data === "low" && !(rc >= 1 && rc <= 50)) return false;
+    if (F.data === "mid" && !(rc >= 51 && rc <= 500)) return false;
+    if (F.data === "high" && rc <= 500) return false;
+    var du = Number(u.days_used) || 0;
+    if (F.days === "0" && du !== 0) return false;
+    if (F.days === "1" && du !== 1) return false;
+    if (F.days === "2-7" && !(du >= 2 && du <= 7)) return false;
+    if (F.days === "8+" && du < 8) return false;
+    if (F.comp === "single" && (compCount[u.company_id] || 1) !== 1) return false;
+    if (F.comp === "multi" && (compCount[u.company_id] || 1) < 2) return false;
+    return true;
+  }
+  var SORTS = {
+    created_desc: function (a, b) { return ms(b.created_at) - ms(a.created_at); },
+    created_asc: function (a, b) { return ms(a.created_at) - ms(b.created_at); },
+    seen_desc: function (a, b) { return ms(b.last_seen_at) - ms(a.last_seen_at); },
+    records_desc: function (a, b) { return (Number(b.records_count) || 0) - (Number(a.records_count) || 0); },
+    logins_desc: function (a, b) { return (Number(b.login_count) || 0) - (Number(a.login_count) || 0); },
+    days_desc: function (a, b) { return (Number(b.days_used) || 0) - (Number(a.days_used) || 0); },
+    name_asc: function (a, b) { return String(a.full_name || "").localeCompare(String(b.full_name || ""), "ar"); },
+  };
+  function filtered() { return users.filter(matches).sort(SORTS[F.sort] || SORTS.created_desc); }
+  function activeCount() {
+    var n = 0; ["q", "status", "role", "reg", "from", "to", "act", "data", "days", "comp"].forEach(function (k) { if (F[k]) n++; });
+    return n;
+  }
   function rowsHtml() {
-    var q = filter.trim().toLowerCase();
-    var list = users.filter(function (u) {
-      return (!statusF || u.status === statusF) &&
-        (!q || (u.full_name + " " + u.phone + " " + u.company_name).toLowerCase().indexOf(q) !== -1);
-    });
+    var list = filtered();
     if (!list.length) return '<tr><td colspan="9" class="empty">لا يوجد مستخدمون مطابقون</td></tr>';
     return list.map(function (u) {
       var isMe = u.id === me.id;
@@ -93,6 +141,22 @@
     }).join("");
   }
 
+  function opts(list, sel) {
+    return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(sel) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("");
+  }
+  function exportXlsx() {
+    var list = filtered();
+    var rows = [[{ v: "المستخدمون — " + list.length + " من " + users.length, s: "title" }],
+      ["الاسم", "الهاتف", "الشركة", "تاريخ التسجيل", "أيام الاستخدام", "مرات الدخول", "آخر ظهور", "عدد السجلات", "الحالة", "النوع"].map(function (h) { return { v: h, s: "head" }; })];
+    list.forEach(function (u) {
+      rows.push([{ v: u.full_name || "", s: "text" }, { v: String(u.phone || ""), s: "text" }, { v: u.company_name || "", s: "text" },
+        { v: u.created_at ? String(u.created_at).slice(0, 10) : "", s: "date" }, Number(u.days_used) || 0, Number(u.login_count) || 0,
+        { v: u.last_seen_at ? String(u.last_seen_at).slice(0, 16).replace("T", " ") : "", s: "date" }, Number(u.records_count) || 0,
+        { v: u.status === "active" ? "نشط" : "موقوف", s: "text" }, { v: u.role === "admin" ? "مدير النظام" : "مستخدم", s: "text" }]);
+    });
+    Xlsx.download("المستخدمون.xlsx", { sheet: "المستخدمون", cols: [24, 16, 26, 14, 12, 12, 18, 12, 10, 14], merges: ["A1:J1"], rows: rows });
+  }
+
   function render() {
     page.innerHTML = html`
       <div class="stack">
@@ -101,13 +165,26 @@
           <button type="button" id="refresh">${I.trendUp}تحديث</button>
         </div>
         <div class="stats" id="adm-stats">${stats()}</div>
-        <div class="row gap wrap">
-          <input id="aq" placeholder="بحث بالاسم أو الهاتف أو الشركة…" style="max-width:380px" value="${esc(filter)}">
-          <select id="astatus" style="max-width:190px">
-            <option value="">كل الحالات</option>
-            <option value="active" ${statusF === "active" ? "selected" : ""}>نشط</option>
-            <option value="suspended" ${statusF === "suspended" ? "selected" : ""}>موقوف</option>
-          </select>
+        <div class="card adm-filters">
+          <div class="adm-fgrid">
+            <div class="field fq"><label>بحث</label><input id="aq" placeholder="الاسم أو الهاتف أو الشركة…" value="${esc(F.q)}" autocomplete="off"></div>
+            <div class="field"><label>الحالة</label><select id="f-status" autocomplete="off">${opts([["", "كل الحالات"], ["active", "نشط"], ["suspended", "موقوف"]], F.status)}</select></div>
+            <div class="field"><label>نوع الحساب</label><select id="f-role" autocomplete="off">${opts([["", "الكل"], ["user", "مستخدم عادي"], ["admin", "مدير النظام"]], F.role)}</select></div>
+            <div class="field"><label>تاريخ التسجيل</label><select id="f-reg" autocomplete="off">${opts([["", "كل الفترات"], ["1", "آخر 24 ساعة"], ["7", "آخر 7 أيام"], ["30", "آخر 30 يوم"], ["90", "آخر 90 يوم"], ["older", "أقدم من 90 يوم"]], F.reg)}</select></div>
+            <div class="field"><label>سُجّل من</label><input type="date" id="f-from" value="${esc(F.from)}"></div>
+            <div class="field"><label>سُجّل إلى</label><input type="date" id="f-to" value="${esc(F.to)}"></div>
+            <div class="field"><label>آخر ظهور</label><select id="f-act" autocomplete="off">${opts([["", "الكل"], ["online", "متصل الآن"], ["day", "آخر 24 ساعة"], ["week", "آخر 7 أيام"], ["month", "آخر 30 يوم"], ["idle", "غير نشط أكثر من 30 يوم"], ["never", "لم يدخل بعد"]], F.act)}</select></div>
+            <div class="field"><label>حجم البيانات</label><select id="f-data" autocomplete="off">${opts([["", "الكل"], ["none", "بدون بيانات (0)"], ["low", "قليل (1 – 50)"], ["mid", "متوسط (51 – 500)"], ["high", "كبير (أكثر من 500)"]], F.data)}</select></div>
+            <div class="field"><label>أيام الاستخدام</label><select id="f-days" autocomplete="off">${opts([["", "الكل"], ["0", "لم يستخدم"], ["1", "يوم واحد"], ["2-7", "من 2 إلى 7 أيام"], ["8+", "8 أيام فأكثر"]], F.days)}</select></div>
+            <div class="field"><label>مستخدمو الشركة</label><select id="f-comp" autocomplete="off">${opts([["", "الكل"], ["single", "شركة بمستخدم واحد"], ["multi", "شركة بأكثر من مستخدم"]], F.comp)}</select></div>
+            <div class="field"><label>الترتيب</label><select id="f-sort" autocomplete="off">${opts([["created_desc", "الأحدث تسجيلًا"], ["created_asc", "الأقدم تسجيلًا"], ["seen_desc", "آخر ظهور"], ["records_desc", "الأكثر بيانات"], ["logins_desc", "الأكثر دخولًا"], ["days_desc", "الأكثر أيام استخدام"], ["name_asc", "الاسم"]], F.sort)}</select></div>
+          </div>
+          <div class="row gap wrap adm-fbar">
+            <span class="muted" id="adm-count"></span>
+            <span class="sp"></span>
+            <button type="button" class="small" id="f-clear">مسح الفلاتر</button>
+            <button type="button" class="small stm-xls" id="f-xls">تصدير Excel</button>
+          </div>
         </div>
         <div class="card table-wrap">
           <table class="adm-table">
@@ -117,8 +194,25 @@
         </div>
       </div>`;
     document.getElementById("refresh").onclick = refresh;
-    document.getElementById("aq").oninput = function (e) { filter = e.target.value; document.getElementById("adm-rows").innerHTML = rowsHtml(); };
-    document.getElementById("astatus").onchange = function (e) { statusF = e.target.value; document.getElementById("adm-rows").innerHTML = rowsHtml(); };
+    function upd() {
+      document.getElementById("adm-rows").innerHTML = rowsHtml();
+      var n = filtered().length, ac = activeCount();
+      document.getElementById("adm-count").textContent = "عرض " + num(n) + " من " + num(users.length) + (ac ? " — " + num(ac) + " فلتر مفعّل" : "");
+      document.getElementById("f-clear").disabled = !ac;
+    }
+    var map = { "f-status": "status", "f-role": "role", "f-reg": "reg", "f-from": "from", "f-to": "to", "f-act": "act", "f-data": "data", "f-days": "days", "f-comp": "comp", "f-sort": "sort" };
+    Object.keys(map).forEach(function (id) { document.getElementById(id).onchange = function (e) { F[map[id]] = e.target.value; if (id === "f-reg" && e.target.value) { F.from = F.to = ""; document.getElementById("f-from").value = ""; document.getElementById("f-to").value = ""; } if ((id === "f-from" || id === "f-to") && e.target.value) { F.reg = ""; document.getElementById("f-reg").value = ""; } upd(); }; });
+    document.getElementById("aq").oninput = function (e) { F.q = e.target.value; upd(); };
+    document.getElementById("f-clear").onclick = function () { var sort = F.sort; F = { q: "", status: "", role: "", reg: "", from: "", to: "", act: "", data: "", days: "", comp: "", sort: sort }; render(); };
+    document.getElementById("f-xls").onclick = exportXlsx;
+    document.getElementById("adm-stats").onclick = function (e) {
+      var c = e.target.closest("[data-quick]"); if (!c) return;
+      var v = c.getAttribute("data-quick"), sort = F.sort;
+      F = { q: "", status: "", role: "", reg: "", from: "", to: "", act: "", data: "", days: "", comp: "", sort: sort };
+      if (v !== "clear") { var kv = v.split(":"); F[kv[0]] = kv[1]; }
+      render();
+    };
+    upd();
     document.getElementById("adm-rows").onclick = function (e) {
       var b = e.target.closest("[data-act]"); if (!b) return;
       var id = b.getAttribute("data-id"), act = b.getAttribute("data-act");

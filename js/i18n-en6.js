@@ -69,5 +69,13 @@ I18n.add({
   "حسابات أبوها غير موجود (ستُضاف كرئيسية):": "Accounts whose parent was not found (will be added as top-level):", "قالب-استيراد-دليل-الحسابات.xlsx": "chart-of-accounts-template.xlsx",
   "نظام رصيد Rasied": "Rasied System", "نظام رصيد": "Rasied System",
   "لا توجد حسابات رئيسية لها فروع بعد — أضف حسابًا فرعيًا من زر «+ فرعي» بجانب أي حساب": "No parent accounts with sub-accounts yet — add a sub-account with the “+ Sub” button next to any account",
-  "الطي والتوسيع لا يعملان أثناء البحث — امسح البحث أولًا": "Collapse/expand does not work while searching — clear the search first"
+  "الطي والتوسيع لا يعملان أثناء البحث — امسح البحث أولًا": "Collapse/expand does not work while searching — clear the search first",
+  "بحث": "Search", "الاسم أو الهاتف أو الشركة…": "Name, phone or company…", "كل الحالات": "All statuses", "نوع الحساب": "Account type", "مستخدم عادي": "Regular user", "مدير النظام": "System admin",
+  "تاريخ التسجيل": "Registration date", "كل الفترات": "All periods", "آخر 24 ساعة": "Last 24 hours", "آخر 7 أيام": "Last 7 days", "آخر 30 يوم": "Last 30 days", "آخر 90 يوم": "Last 90 days",
+  "أقدم من 90 يوم": "Older than 90 days", "سُجّل من": "Registered from", "سُجّل إلى": "Registered to", "آخر ظهور": "Last seen", "متصل الآن": "Online now", "غير نشط أكثر من 30 يوم": "Inactive for over 30 days",
+  "لم يدخل بعد": "Never signed in", "حجم البيانات": "Data volume", "بدون بيانات (0)": "No data (0)", "قليل (1 – 50)": "Low (1 – 50)", "متوسط (51 – 500)": "Medium (51 – 500)", "كبير (أكثر من 500)": "High (over 500)",
+  "أيام الاستخدام": "Days used", "لم يستخدم": "Not used", "يوم واحد": "One day", "من 2 إلى 7 أيام": "2 to 7 days", "8 أيام فأكثر": "8 days or more", "مستخدمو الشركة": "Company users",
+  "شركة بمستخدم واحد": "Company with one user", "شركة بأكثر من مستخدم": "Company with several users", "الترتيب": "Sort by", "الأحدث تسجيلًا": "Newest registered", "الأقدم تسجيلًا": "Oldest registered",
+  "الأكثر بيانات": "Most data", "الأكثر دخولًا": "Most sign-ins", "الأكثر أيام استخدام": "Most days used", "مسح الفلاتر": "Clear filters", "عرض": "Showing", "فلتر مفعّل": "filter(s) active",
+  "المستخدمون": "Users", "عرض الكل": "Show all", "عدد السجلات": "Records", "تاريخ التسجيل ": "Registered", "مرات الدخول": "Sign-ins", "مستخدم": "User"
 });
