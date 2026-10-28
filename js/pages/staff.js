@@ -9,13 +9,13 @@
     ["المشتريات", [["purchases", "فواتير الشراء"], ["purchase-returns", "مردودات الشراء"], ["suppliers", "الموردين"]]],
     ["المخزون", [["products", "الأصناف"], ["warehouses", "المخازن"], ["stocktake", "الجرد"], ["transfers", "تحويلات المخازن"]]],
     ["الخزائن والبنوك", [["cash-registers", "الخزائن"], ["banks", "البنوك"], ["cheques", "الشيكات"], ["payments", "سندات قبض/صرف"]]],
-    ["الحسابات", [["statements", "كشوف الحساب"], ["party-trial", "ميزان العملاء والموردين"], ["accounts", "دليل الحسابات"], ["journal", "قيود اليومية"], ["expenses", "المصروفات"], ["reports", "التقارير المالية"], ["daily-report", "التقرير اليومي"]]],
+    ["الحسابات", [["statements", "كشوف الحساب"], ["party-trial", "ميزان العملاء والموردين"], ["accounts", "دليل الحسابات"], ["journal", "قيود اليومية"], ["expenses", "المصروفات"], ["reports", "التقارير المالية"], ["trial-balance", "ميزان المراجعة"], ["ledger", "دفتر الأستاذ"], ["financials", "القوائم المالية"], ["vat-report", "تقرير الضريبة"], ["daily-report", "التقرير اليومي"]]],
     ["الموارد البشرية", [["employees", "الموظفين"], ["attendance", "الحضور والانصراف"], ["payroll", "المرتبات"]]],
   ];
   var PRESETS = {
     "مبيعات": ["sales", "returns", "customers", "products", "statements"],
     "أمين مخزن": ["products", "warehouses", "stocktake", "transfers", "purchases", "suppliers"],
-    "محاسب": ["sales", "returns", "customers", "purchases", "purchase-returns", "suppliers", "cash-registers", "banks", "cheques", "payments", "statements", "party-trial", "accounts", "journal", "expenses", "reports", "sales-sheet", "daily-report"],
+    "محاسب": ["trial-balance", "ledger", "financials", "vat-report", "sales", "returns", "customers", "purchases", "purchase-returns", "suppliers", "cash-registers", "banks", "cheques", "payments", "statements", "party-trial", "accounts", "journal", "expenses", "reports", "sales-sheet", "daily-report"],
   };
 
   page.innerHTML = html`

@@ -1096,23 +1096,4 @@ html.dark mark{background:#854d0e}
 .auth-brand .brand-logo { width: 52px; height: 52px; }
 .auth-brand b { font-size: 20px; }
 
-/* ===== v38 — صفحة «إدارة المستخدمين» (admin): تصغير العرض 20% ===== */
-body[data-page="admin"] #page,
-body[data-page="admin"] .modal-overlay .modal { zoom: .8; }
-/* احتياطي لمتصفحات بلا دعم zoom: تصغير الخط والحشو بما يقارب 20% */
-@supports not (zoom: 1) {
-  body[data-page="admin"] #page, body[data-page="admin"] .modal-overlay .modal { font-size: 80%; }
-  body[data-page="admin"] #page table { font-size: 10px; }
-  body[data-page="admin"] #page thead th, body[data-page="admin"] #page tbody td { padding: 7px 8px; }
-  body[data-page="admin"] #page .stat .value { font-size: 80%; }
-}
-
-/* ===== v39 — فلاتر صفحة إدارة المستخدمين ===== */
-.adm-fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
-.adm-fgrid .field { margin: 0; }
-.adm-fgrid .fq { grid-column: span 2; }
-.adm-fbar { margin-top: 12px; align-items: center; }
-.adm-fbar .sp { flex: 1; }
-.adm-filters { padding: 14px 16px; }
-[data-quick]:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
-@media (max-width: 640px) { .adm-fgrid .fq { grid-column: span 1; } }
+/* v40 — تصغير صفحة إدارة المستخدمين صار بمقاسات صريحة داخل admin.js (لا zoom: يعطّل القوائم المنسدلة) */

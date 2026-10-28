@@ -141,6 +141,12 @@
     }).join("");
   }
 
+  function chipRow(label, key, list, extra) {
+    return '<div class="adm-rowc"><span class="adm-lbl">' + label + '</span><div class="adm-chips" data-f="' + key + '">' +
+      list.map(function (o) { return '<button type="button" data-v="' + esc(o[0]) + '"' + (String(F[key]) === String(o[0]) ? ' class="on"' : "") + ">" + esc(o[1]) + "</button>"; }).join("") + "</div>" + (extra || "") + "</div>";
+  }
+  function advCount() { var n = 0; ["role", "reg", "from", "to", "data", "days", "comp"].forEach(function (k) { if (F[k]) n++; }); return n; }
+  function advOpen() { return advCount() > 0; }
   function opts(list, sel) {
     return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(sel) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("");
   }
@@ -159,6 +165,41 @@
 
   function render() {
     page.innerHTML = html`
+      <style>
+        .adm-filters { padding: 12px 14px; }
+        .adm-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+        .adm-search { flex: 1 1 260px; min-width: 200px; }
+        .adm-sortl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+        .adm-sortl select { min-width: 150px; }
+        .adm-rowc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 5px 0; border-top: 1px dashed var(--border); }
+        .adm-top + .adm-rowc { border-top: 0; }
+        .adm-lbl { width: 104px; flex: none; font-size: 12px; font-weight: 700; color: var(--text-2); }
+        .adm-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .adm-chips button { min-height: 28px; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); box-shadow: none; }
+        .adm-chips button:hover { border-color: var(--primary); color: var(--primary); }
+        .adm-chips button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .adm-dates { display: inline-flex; gap: 8px; align-items: center; margin-inline-start: 6px; }
+        .adm-dates label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); }
+        .adm-dates input { min-height: 28px; padding: 2px 6px; font-size: 12px; }
+        .adm-badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--primary); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+        .adm-fbar { display: flex; gap: 8px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; }
+        .adm-fbar .sp { flex: 1; }
+        [data-quick]:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+        /* ضغط الصفحة ~20% بمقاسات صريحة (بدل zoom الذي يعطّل القوائم المنسدلة الأصلية) */
+        #page .stats { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+        #page .stat { padding: 11px 14px; }
+        #page .stat .value { font-size: 21px; margin-top: 4px; }
+        #page .stat .label { font-size: 11px; }
+        #page table { font-size: 11px; }
+        #page thead th { padding: 7px 9px; font-size: 10.5px; }
+        #page tbody td { padding: 7px 9px; }
+        #page .badge { font-size: 10.5px; padding: 2px 8px; }
+        #page button.small { font-size: 11px; padding: 3px 10px; min-height: 26px; }
+        #page .card { padding: 12px; }
+        #page .card.table-wrap { padding: 0; }
+        #page select option { color: #111; background: #fff; }
+        @media (max-width: 640px) { .adm-lbl { width: 100%; } }
+      </style>
       <div class="stack">
         <div class="page-toolbar">
           <div><p class="muted">كل مستخدم له شركة مستقلة · الأدمن فقط يرى هذه الصفحة</p></div>
@@ -166,20 +207,24 @@
         </div>
         <div class="stats" id="adm-stats">${stats()}</div>
         <div class="card adm-filters">
-          <div class="adm-fgrid">
-            <div class="field fq"><label>بحث</label><input id="aq" placeholder="الاسم أو الهاتف أو الشركة…" value="${esc(F.q)}" autocomplete="off"></div>
-            <div class="field"><label>الحالة</label><select id="f-status" autocomplete="off">${opts([["", "كل الحالات"], ["active", "نشط"], ["suspended", "موقوف"]], F.status)}</select></div>
-            <div class="field"><label>نوع الحساب</label><select id="f-role" autocomplete="off">${opts([["", "الكل"], ["user", "مستخدم عادي"], ["admin", "مدير النظام"]], F.role)}</select></div>
-            <div class="field"><label>تاريخ التسجيل</label><select id="f-reg" autocomplete="off">${opts([["", "كل الفترات"], ["1", "آخر 24 ساعة"], ["7", "آخر 7 أيام"], ["30", "آخر 30 يوم"], ["90", "آخر 90 يوم"], ["older", "أقدم من 90 يوم"]], F.reg)}</select></div>
-            <div class="field"><label>سُجّل من</label><input type="date" id="f-from" value="${esc(F.from)}"></div>
-            <div class="field"><label>سُجّل إلى</label><input type="date" id="f-to" value="${esc(F.to)}"></div>
-            <div class="field"><label>آخر ظهور</label><select id="f-act" autocomplete="off">${opts([["", "الكل"], ["online", "متصل الآن"], ["day", "آخر 24 ساعة"], ["week", "آخر 7 أيام"], ["month", "آخر 30 يوم"], ["idle", "غير نشط أكثر من 30 يوم"], ["never", "لم يدخل بعد"]], F.act)}</select></div>
-            <div class="field"><label>حجم البيانات</label><select id="f-data" autocomplete="off">${opts([["", "الكل"], ["none", "بدون بيانات (0)"], ["low", "قليل (1 – 50)"], ["mid", "متوسط (51 – 500)"], ["high", "كبير (أكثر من 500)"]], F.data)}</select></div>
-            <div class="field"><label>أيام الاستخدام</label><select id="f-days" autocomplete="off">${opts([["", "الكل"], ["0", "لم يستخدم"], ["1", "يوم واحد"], ["2-7", "من 2 إلى 7 أيام"], ["8+", "8 أيام فأكثر"]], F.days)}</select></div>
-            <div class="field"><label>مستخدمو الشركة</label><select id="f-comp" autocomplete="off">${opts([["", "الكل"], ["single", "شركة بمستخدم واحد"], ["multi", "شركة بأكثر من مستخدم"]], F.comp)}</select></div>
-            <div class="field"><label>الترتيب</label><select id="f-sort" autocomplete="off">${opts([["created_desc", "الأحدث تسجيلًا"], ["created_asc", "الأقدم تسجيلًا"], ["seen_desc", "آخر ظهور"], ["records_desc", "الأكثر بيانات"], ["logins_desc", "الأكثر دخولًا"], ["days_desc", "الأكثر أيام استخدام"], ["name_asc", "الاسم"]], F.sort)}</select></div>
+          <div class="adm-top">
+            <input id="aq" class="adm-search" placeholder="ابحث بالاسم أو الهاتف أو الشركة…" value="${esc(F.q)}" autocomplete="off">
+            <label class="adm-sortl">الترتيب
+              <select id="f-sort" autocomplete="off">${opts([["created_desc", "الأحدث تسجيلًا"], ["created_asc", "الأقدم تسجيلًا"], ["seen_desc", "آخر ظهور"], ["records_desc", "الأكثر بيانات"], ["logins_desc", "الأكثر دخولًا"], ["days_desc", "الأكثر أيام استخدام"], ["name_asc", "الاسم"]], F.sort)}</select>
+            </label>
+            <button type="button" class="small" id="f-adv">فلاتر إضافية <span class="adm-badge" id="adv-n"></span></button>
           </div>
-          <div class="row gap wrap adm-fbar">
+          ${chipRow("الحالة", "status", [["", "الكل"], ["active", "نشط"], ["suspended", "موقوف"]])}
+          ${chipRow("آخر ظهور", "act", [["", "الكل"], ["online", "متصل الآن"], ["day", "24 ساعة"], ["week", "7 أيام"], ["month", "30 يوم"], ["idle", "غير نشط +30"], ["never", "لم يدخل بعد"]])}
+          <div id="adm-adv" ${advOpen() ? "" : "hidden"}>
+            ${chipRow("نوع الحساب", "role", [["", "الكل"], ["user", "مستخدم"], ["admin", "مدير النظام"]])}
+            ${chipRow("تاريخ التسجيل", "reg", [["", "الكل"], ["1", "24 ساعة"], ["7", "7 أيام"], ["30", "30 يوم"], ["90", "90 يوم"], ["older", "أقدم من 90"]],
+              '<span class="adm-dates"><label>من <input type="date" id="f-from" value="' + esc(F.from) + '"></label><label>إلى <input type="date" id="f-to" value="' + esc(F.to) + '"></label></span>')}
+            ${chipRow("حجم البيانات", "data", [["", "الكل"], ["none", "بدون"], ["low", "1 – 50"], ["mid", "51 – 500"], ["high", "أكثر من 500"]])}
+            ${chipRow("أيام الاستخدام", "days", [["", "الكل"], ["0", "لم يستخدم"], ["1", "يوم"], ["2-7", "2 – 7"], ["8+", "8 فأكثر"]])}
+            ${chipRow("مستخدمو الشركة", "comp", [["", "الكل"], ["single", "مستخدم واحد"], ["multi", "أكثر من مستخدم"]])}
+          </div>
+          <div class="adm-fbar">
             <span class="muted" id="adm-count"></span>
             <span class="sp"></span>
             <button type="button" class="small" id="f-clear">مسح الفلاتر</button>
@@ -199,10 +244,25 @@
       var n = filtered().length, ac = activeCount();
       document.getElementById("adm-count").textContent = "عرض " + num(n) + " من " + num(users.length) + (ac ? " — " + num(ac) + " فلتر مفعّل" : "");
       document.getElementById("f-clear").disabled = !ac;
+      var adv = advCount(), bd = document.getElementById("adv-n"); bd.textContent = adv ? adv : ""; bd.style.display = adv ? "" : "none";
+      Array.prototype.forEach.call(document.querySelectorAll(".adm-chips"), function (box) {
+        var key = box.getAttribute("data-f");
+        Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) { b.classList.toggle("on", String(F[key]) === b.getAttribute("data-v")); });
+      });
     }
-    var map = { "f-status": "status", "f-role": "role", "f-reg": "reg", "f-from": "from", "f-to": "to", "f-act": "act", "f-data": "data", "f-days": "days", "f-comp": "comp", "f-sort": "sort" };
-    Object.keys(map).forEach(function (id) { document.getElementById(id).onchange = function (e) { F[map[id]] = e.target.value; if (id === "f-reg" && e.target.value) { F.from = F.to = ""; document.getElementById("f-from").value = ""; document.getElementById("f-to").value = ""; } if ((id === "f-from" || id === "f-to") && e.target.value) { F.reg = ""; document.getElementById("f-reg").value = ""; } upd(); }; });
+    Array.prototype.forEach.call(document.querySelectorAll(".adm-chips"), function (box) {
+      box.onclick = function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        var key = box.getAttribute("data-f"); F[key] = b.getAttribute("data-v");
+        if (key === "reg" && F.reg) { F.from = F.to = ""; document.getElementById("f-from").value = ""; document.getElementById("f-to").value = ""; }
+        upd();
+      };
+    });
+    document.getElementById("f-sort").onchange = function (e) { F.sort = e.target.value; upd(); };
+    document.getElementById("f-from").onchange = function (e) { F.from = e.target.value; if (F.from) F.reg = ""; upd(); };
+    document.getElementById("f-to").onchange = function (e) { F.to = e.target.value; if (F.to) F.reg = ""; upd(); };
     document.getElementById("aq").oninput = function (e) { F.q = e.target.value; upd(); };
+    document.getElementById("f-adv").onclick = function () { var el = document.getElementById("adm-adv"); el.hidden = !el.hidden; };
     document.getElementById("f-clear").onclick = function () { var sort = F.sort; F = { q: "", status: "", role: "", reg: "", from: "", to: "", act: "", data: "", days: "", comp: "", sort: sort }; render(); };
     document.getElementById("f-xls").onclick = exportXlsx;
     document.getElementById("adm-stats").onclick = function (e) {

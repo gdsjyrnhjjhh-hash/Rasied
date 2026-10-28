@@ -381,7 +381,7 @@
     if (!can(action)) throw new Error(action === "delete" ? "غير مصرّح لك بالحذف — تواصل مع مالك الشركة" : "غير مصرّح لك بتعديل المستندات المحفوظة — تواصل مع مالك الشركة");
   }
   var GUARDED_DELETE = ["customers", "suppliers", "products", "accounts", "employees", "cash_registers", "treasury_tabs", "banks", "expenses", "warehouses",
-    "cheques", "cash_counts", "sales", "purchases", "sale_returns", "purchase_returns", "bank_movements"];
+    "cheques", "cash_counts", "sales", "purchases", "sale_returns", "purchase_returns", "bank_movements", "customer_groups", "supplier_groups", "product_groups"];
   // يُختم كل سجل رئيسي بمن أنشأه (بدون سطور البنود/القيود لتقليل الحجم)
   function mkItem(table, row) {
     var base = { id: uid(), created_at: new Date().toISOString() };
