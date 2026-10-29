@@ -1,6 +1,7 @@
 (async function () {
   var page = await UI.init("products");
   if (!page) return;
+  try { await UI.need("js/groups.js", "Groups"); } catch (e) { UI.toast(e.message, true); }
   var html = UI.html, money = UI.money, esc = Ledger.esc;
   var products = [], warehouses = [], groups = [], collapsed = {};
   var GT = "product_groups";
@@ -128,9 +129,15 @@
   }
 
   async function load() {
-    var d = await Promise.all([DB.list("products"), DB.list("warehouses"), DB.list(GT)]);
-    products = d[0]; warehouses = d[1]; groups = d[2];
-    fillGsel(); render();
+    try {
+      // المجموعات والمخازن اختيارية: فشل جلبها لا يمنع عرض الأصناف ولا فتح نموذج الإضافة
+      var d = await Promise.all([DB.list("products"), DB.list("warehouses").catch(function () { return []; }), DB.list(GT).catch(function () { return []; })]);
+      products = d[0] || []; warehouses = d[1] || []; groups = d[2] || [];
+      fillGsel(); render();
+    } catch (err) {
+      document.getElementById("list").innerHTML = '<div class="empty">تعذّر تحميل الأصناف: ' + esc(err.message) + '</div>';
+      UI.toast(err.message, true);
+    }
   }
 
   document.getElementById("btn-add").onclick = function () { openForm(null); };

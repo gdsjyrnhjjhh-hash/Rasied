@@ -1,6 +1,7 @@
 (async function () {
   var page = await UI.init("suppliers");
   if (!page) return;
+  try { await UI.need("js/groups.js", "Groups"); } catch (e) { UI.toast(e.message, true); }
   var html = UI.html, money = UI.money, esc = Ledger.esc;
   var items = [], groups = [], collapsed = {};
   var GT = "supplier_groups";
@@ -124,9 +125,14 @@
   }
 
   async function load() {
-    var d = await Promise.all([DB.list("suppliers"), DB.list(GT)]);
-    items = d[0]; groups = d[1];
-    fillGsel(); render();
+    try {
+      var d = await Promise.all([DB.list("suppliers"), DB.list(GT).catch(function () { return []; })]);
+      items = d[0] || []; groups = d[1] || [];
+      fillGsel(); render();
+    } catch (err) {
+      document.getElementById("list").innerHTML = '<div class="empty">تعذّر تحميل الموردين: ' + esc(err.message) + '</div>';
+      UI.toast(err.message, true);
+    }
   }
 
   document.getElementById("btn-add").onclick = function () { openForm(null); };

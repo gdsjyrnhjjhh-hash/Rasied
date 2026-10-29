@@ -317,10 +317,53 @@
   // كثافة العرض: مدمجة افتراضيًا؛ "normal" تعيد الأحجام القديمة (تُضبط من الإعدادات)
   try { if (localStorage.getItem("trading_density") === "normal") document.documentElement.setAttribute("data-density", "normal"); } catch (e) {}
   // رسالة واضحة عند منع إجراء مقيَّد (حذف/تعديل) بدل خطأ صامت في الصفحات التي لا تلتقط الاستثناء
+  // أي خطأ غير ملتقَط يظهر الآن كرسالة (كان الزر «لا يفعل شيئًا» والمستخدم لا يعرف السبب)
+  var lastErrMsg = "", lastErrAt = 0;
+  function surfaceError(m) {
+    if (!m) return;
+    var now = Date.now();
+    if (m === lastErrMsg && now - lastErrAt < 4000) return;
+    lastErrMsg = m; lastErrAt = now;
+    try { UI.toast(/^غير مصرّح/.test(m) ? m : "حدث خطأ: " + m, true); } catch (x) {}
+    try { console.error("[رصيد]", m); } catch (x) {}
+  }
   window.addEventListener("unhandledrejection", function (e) {
-    var m = e && e.reason && e.reason.message;
-    if (m && /^غير مصرّح/.test(m)) { e.preventDefault(); try { UI.toast(m, true); } catch (x) {} }
+    var r = e && e.reason, m = r && (r.message || (typeof r === "string" ? r : ""));
+    if (m && /^غير مصرّح/.test(m)) e.preventDefault();
+    surfaceError(m);
   });
+  window.addEventListener("error", function (e) {
+    if (e && e.message && !/ResizeObserver|Script error/i.test(e.message)) surfaceError(e.message);
+  });
+  // رقم الإصدار (?v=…) من وسم ui.js نفسه — لتجنّب كاش قديم عند تحميل ملفات ديناميكيًا
+  function verQ() {
+    var me = document.querySelector('script[src*="js/ui.js"]');
+    return me && me.src.indexOf("?") > -1 ? me.src.slice(me.src.indexOf("?")) : "";
+  }
+  // تحميل سكربت ناقص عند الحاجة (مثلاً لو نُشرت صفحة HTML قديمة بدون groups.js)
+  var needing = {};
+  function need(src, globalName) {
+    if (window[globalName]) return Promise.resolve();
+    if (needing[src]) return needing[src];
+    needing[src] = new Promise(function (resolve, reject) {
+      var sc = document.createElement("script");
+      sc.src = src + verQ();
+      sc.onload = function () { window[globalName] ? resolve() : reject(new Error("تعذّر تحميل " + src)); };
+      sc.onerror = function () { reject(new Error("تعذّر تحميل الملف " + src + " — حدّث الصفحة (Ctrl+F5)")); };
+      document.head.appendChild(sc);
+    }).then(function (v) { delete needing[src]; return v; }, function (e) { delete needing[src]; throw e; });
+    return needing[src];
+  }
+  // مكتبات مشتركة تستخدمها الصفحات: التنقل الداخلي (SPA) يحمّل ملف الصفحة وحده، فنحمّل ما ينقصها قبل تشغيلها
+  var SHARED_LIBS = { Groups: "js/groups.js", Xlsx: "js/xlsx-lite.js", Acct: "js/acct.js", Cheques: "js/cheques.js",
+    Invoices: "js/invoices.js", InvoiceList: "js/invoice-list.js", Ledger: "js/ledger.js" };
+  async function ensureLibs(code) {
+    var jobs = [];
+    Object.keys(SHARED_LIBS).forEach(function (g) {
+      if (!window[g] && new RegExp("\\b" + g + "\\.").test(code)) jobs.push(need(SHARED_LIBS[g], g));
+    });
+    if (jobs.length) await Promise.all(jobs);
+  }
 
   function buildCtx(prof, pending) {
     var isAdmin = !!(prof && prof.role === "admin");
@@ -655,11 +698,12 @@
   async function runPageScript(src) {
     var code = pageScriptCache[src];
     if (!code) {
-      var res = await fetch(src + (src.indexOf("?") >= 0 ? "&" : "?") + "v=24");
+      var res = await fetch(src + verQ());
       if (!res.ok) throw new Error("تعذّر تحميل الصفحة (" + res.status + ")");
       code = await res.text();
       pageScriptCache[src] = code;
     }
+    await ensureLibs(code);
     // إعادة تنفيذ الـ IIFE في كل زيارة للصفحة
     (0, eval)(code);
   }
@@ -1032,6 +1076,7 @@
     compact: compact,
     fmtDate: fmtDate,
     toast: toast,
+    need: need,
     ACCOUNT_TYPES: ACCOUNT_TYPES,
     typeLabel: typeLabel,
     exportCSV: exportCSV,
