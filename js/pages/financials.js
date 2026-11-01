@@ -47,7 +47,7 @@
     var opt = { level: L.level, leaves: L.leaves };
     function group(types, filterFn) {
       var rows = Acct.rows(D, B, Object.assign({ types: types }, opt)).filter(function (r) { return !filterFn || filterFn(r.a); });
-      rows = rows.filter(function (r) { return !S.hideZero || Math.abs(amount(r, mode)) > 0.004; });
+      rows = rows.filter(function (r) { return !S.hideZero || types.indexOf("equity") !== -1 || Math.abs(amount(r, mode)) > 0.004; }); // حقوق الملكية (رأس المال) تظهر دائمًا حتى لو صفر
       // المجموع من الأرصدة الذاتية (بلا ازدواج)
       var total = 0;
       D.accounts.forEach(function (a) { if (types.indexOf(a.type) !== -1 && (!filterFn || filterFn(a))) { var o = B.own[a.id]; total += Acct.nature(a.type, mode === "is" ? o.debit - o.credit : o.open + o.debit - o.credit); } });

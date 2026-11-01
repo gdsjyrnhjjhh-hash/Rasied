@@ -138,3 +138,40 @@ I18n.add({
   "الحذف يجعل رصيد الخزينة سالبًا": "Deleting would make the treasury balance negative",
   "رصيد الخزينة غير كافٍ": "Insufficient treasury balance"
 });
+I18n.add({
+  "تقارير الزيارات والمكالمات": "Visit & call reports", "نشاط المندوبين اليومي مع العملاء · متابعات": "Daily field activity with customers · follow-ups",
+  "سجّل نشاطك اليومي مع العملاء · نتيجة · موعد متابعة": "Log your daily customer activity · outcome · follow-up date",
+  "+ تقرير جديد": "+ New report", "تقرير جديد": "New report", "تعديل تقرير": "Edit report", "زيارات": "Visits", "مكالمات": "Calls", "تم الاتفاق": "Agreed",
+  "متابعات مستحقة": "Due follow-ups", "تمت المتابعة": "Follow-up done", "(متأخرة)": "(overdue)", "موعد المتابعة": "Follow-up date",
+  "النشاط": "Activity", "الموظف": "Employee", "النتيجة": "Outcome", "المتابعة": "Follow-up", "زيارة": "Visit", "مكالمة": "Call", "واتساب": "WhatsApp", "اجتماع": "Meeting",
+  "مهتم": "Interested", "يحتاج متابعة": "Needs follow-up", "لم يرد": "No answer", "رفض": "Rejected", "اليوم": "Today", "أمس": "Yesterday", "آخر 7 أيام": "Last 7 days", "هذا الشهر": "This month",
+  "لا توجد تقارير في هذه الفترة": "No reports in this period", "اتصال": "Call", "قيمة متوقعة": "Expected value",
+  "العميل (اختر من القائمة أو اكتب اسم عميل جديد)": "Customer (pick from the list or type a new name)", "ما تم / ملاحظات": "What was done / notes",
+  "اسم العميل...": "Customer name...", "اكتب اسم العميل": "Enter the customer name", "تم حفظ التقرير": "Report saved", "تم تعديل التقرير": "Report updated",
+  "تم تسجيل المتابعة": "Follow-up recorded", "حذف هذا التقرير؟": "Delete this report?", "لا يمكنك تعديل تقرير زميلك": "You can’t edit a colleague’s report", "لا يمكنك حذف تقرير زميلك": "You can’t delete a colleague’s report",
+  "اسم العميل أو ملاحظة...": "Customer name or note...", "لا توجد بيانات للتصدير": "No data to export",
+  "عروض الأسعار": "Quotations", "عرض سعر للعميل · طباعة · تحويل لفاتورة": "Customer quotation · print · convert to invoice", "عرض سعر للعميل · طباعة PDF · تحويل لفاتورة بيع بضغطة": "Customer quotation · PDF print · one-click convert to sales invoice",
+  "+ عرض سعر": "+ Quotation", "عرض سعر جديد": "New quotation", "رقم العرض أو اسم العميل...": "Quote number or customer name...", "لا توجد عروض أسعار": "No quotations",
+  "الصلاحية": "Validity", "منتهي": "Expired", "مسودة": "Draft", "مُرسل": "Sent", "مقبول": "Accepted", "مرفوض": "Declined", "تحوّل لفاتورة": "Converted to invoice", "تحويل لفاتورة": "Convert to invoice",
+  "صالح حتى": "Valid until", "حفظ العرض": "Save quotation", "+ إضافة بند": "+ Add line", "اسم الصنف...": "Item name...", "أضف بنود العرض": "Add quotation lines",
+  "ملاحظات للعميل": "Notes for customer", "الشروط": "Terms", "الأسعار سارية حتى تاريخ انتهاء العرض.": "Prices valid until the quotation expiry date.",
+  "تم حفظ العرض": "Quotation saved", "تم تعديل العرض": "Quotation updated", "تم تحديث الحالة": "Status updated", "أضف بندًا واحدًا على الأقل بكمية صحيحة": "Add at least one line with a valid quantity",
+  "العميل * ": "Customer * ", "من القائمة أو اسم عميل محتمل": "from the list or a prospect’s name",
+  "العميل غير مسجّل — اختره أو أضفه بزر «+ جديد» قبل الحفظ": "Customer not registered — pick one or add via “+ New” before saving",
+  "عرض السعر غير موجود": "Quotation not found", "هذا العرض تم تحويله لفاتورة من قبل": "This quotation was already converted to an invoice",
+  "مندوب ميداني": "Field rep"
+});
+I18n.add({
+  "رأس المال": "Capital", "إيداع رأس المال وسحب المالك · حقوق الملكية": "Capital contributions & owner drawings · equity",
+  "إيداع رأس المال وسحب المالك · يظهر تلقائيًا في «حقوق الملكية» بقائمة المركز المالي": "Capital contributions & owner drawings · shown automatically under “Equity” in the balance sheet",
+  "+ إيداع رأس مال": "+ Capital contribution", "+ سحب من رأس المال": "+ Withdraw from capital", "إيداع رأس مال": "Capital contribution", "سحب من رأس المال": "Withdraw from capital",
+  "رصيد رأس المال": "Capital balance", "إجمالي الإيداعات": "Total contributions", "إجمالي المسحوبات": "Total drawings", "سحب": "Drawing",
+  "تُودَع في": "Deposited into", "تُسحب من": "Withdrawn from", "الخزائن": "Cash registers", "البنوك": "Banks",
+  "أصل آخر (قيد محاسبي فقط، بدون حركة نقدية)": "Other asset (journal entry only, no cash movement)",
+  "لا توجد حركات رأس مال — اضغط «+ إيداع رأس مال» لتسجيل رأس مال النشاط": "No capital entries — click “+ Capital contribution” to record the business capital",
+  "تم تسجيل رأس المال": "Capital recorded", "تم تسجيل السحب": "Drawing recorded", "ترحيل": "Post",
+  "لا توجد خزينة أو بنك — أضف واحدًا أولًا": "No cash register or bank — add one first",
+  "رصيد البنك غير كافٍ": "Insufficient bank balance", "الحذف يجعل رصيد البنك سالبًا": "Deleting would make the bank balance negative",
+  "حذف هذه الحركة؟ سيُعكس أثرها على الخزينة/البنك والقيود.": "Delete this entry? Its effect on the cash register/bank and journal will be reversed.",
+  "رأس مال": "Capital"
+});

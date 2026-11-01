@@ -3,6 +3,7 @@
   var kind = Invoices.KINDS[q.get("kind")] ? q.get("kind") : "sale";
   var K = Invoices.KINDS[kind];
   var editId = q.get("id") || "";
+  var quoteId = kind === "sale" ? (q.get("quote") || "") : "", quoteRec = null; // تحويل عرض سعر إلى فاتورة
   var page = await UI.init(K.page, { title: [editId ? "تعديل " + K.title : K.newTitle, K.plural] });
   if (!page) return;
   var html = UI.html, money = UI.money, esc = Ledger.esc;
@@ -251,6 +252,11 @@
     try {
       var res = await Invoices.save(kind, d, existing);
       UI.toast("تم حفظ " + K.title + " #" + res.number);
+      if (quoteRec) {
+        try { await DB.update("quotes", quoteRec.id, { status: "converted", invoice_id: res.id, invoice_number: res.number, converted_at: new Date().toISOString() }); }
+        catch (e2) { UI.toast("حُفظت الفاتورة لكن تعذّر تحديث حالة العرض: " + (e2.message || ""), true); }
+        quoteRec = null; location.href = "quotes.html"; return;
+      }
       if (existing) { location.href = K.listHref; return; }
       await reset();
     } catch (err) { UI.toast(err.message || "خطأ", true); }
@@ -320,6 +326,26 @@
     });
   } else {
     $("f-num").value = await DB.nextNumber(K.seq);
+    if (quoteId) {
+      var qs = (await DB.list("quotes")).filter(function (x) { return x.id === quoteId; });
+      quoteRec = qs[0] || null;
+      if (!quoteRec) UI.toast("عرض السعر غير موجود", true);
+      else if (quoteRec.status === "converted") { UI.toast("هذا العرض تم تحويله لفاتورة من قبل", true); quoteRec = null; }
+      else {
+        var cust = parties.filter(function (p) { return p.id === quoteRec.party_id; })[0] || parties.filter(function (p) { return p.name === quoteRec.party_name; })[0] || null;
+        if (cust) selectParty(cust); else { $("f-party").value = quoteRec.party_name || ""; UI.toast("العميل غير مسجّل — اختره أو أضفه بزر «+ جديد» قبل الحفظ", true); }
+        $("f-notes").value = "من عرض سعر #" + quoteRec.number + (quoteRec.notes ? " — " + quoteRec.notes : "");
+        $("f-discount").value = quoteRec.discount || "";
+        if ($("f-vat")) $("f-vat").value = N(quoteRec.vat_rate) > 0 ? "1" : "0";
+        var skipped = [];
+        (quoteRec.lines || []).forEach(function (l) {
+          var p = products.filter(function (x) { return x.id === l.product_id; })[0] || products.filter(function (x) { return x.name === l.name; })[0];
+          if (!p) { skipped.push(l.name); return; }
+          items.push({ product_id: p.id, name: p.name, qty: N(l.qty), price: N(l.price), unit: l.unit || "", note: "" });
+        });
+        if (skipped.length) UI.toast("بنود غير مسجّلة كأصناف لم تُنقل: " + skipped.join("، "), true);
+      }
+    }
   }
   drawItems();
   setTimeout(function () { if (!editId) $("f-party").focus(); }, 50);

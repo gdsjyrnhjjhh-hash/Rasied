@@ -30,7 +30,7 @@
       c: ls.reduce(function (s, l) { return s + (Number(l.credit) || 0); }, 0),
     };
   }
-  var SRC = { sale: "مبيعات", purchase: "مشتريات", manual: "يدوي", payment: "سند", expense: "مصروف", payroll: "مرتبات", sale_return: "مردود بيع", purchase_return: "مردود شراء" };
+  var SRC = { sale: "مبيعات", purchase: "مشتريات", manual: "يدوي", capital: "رأس مال", payment: "سند", expense: "مصروف", payroll: "مرتبات", sale_return: "مردود بيع", purchase_return: "مردود شراء" };
 
   function renderList() {
     var totalD = lines.reduce(function (s, l) { return s + (Number(l.debit) || 0); }, 0);

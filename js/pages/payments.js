@@ -55,12 +55,12 @@
               var locked = !!lockReason(p);
               return html`<tr data-id="${p.id}">
                 <td><span class="badge ${p.kind === "receipt" ? "ok" : "warn"}">${p.kind === "receipt" ? "قبض" : "صرف"}</span></td>
-                <td>${partyName(p)}</td>
+                <td>${Ledger.esc(partyName(p))}</td>
                 <td><b>${money(p.amount)}</b></td>
                 <td>${p.method === "cash" ? "نقدي" : p.method === "bank" ? "بنك" : p.method === "cheque" ? "شيك" : p.method}</td>
-                <td>${regName(p.register_id)}${noReg && !locked ? html` <span class="badge warn" title="سند نقدي غير مسجَّل في أي خزينة — اضغط تعديل واختر الخزينة">غير مسجَّل بالخزينة</span>` : ""}</td>
+                <td>${Ledger.esc(regName(p.register_id))}${noReg && !locked ? html` <span class="badge warn" title="سند نقدي غير مسجَّل في أي خزينة — اضغط تعديل واختر الخزينة">غير مسجَّل بالخزينة</span>` : ""}</td>
                 <td dir="ltr">${p.date || ""}</td>
-                <td class="muted">${p.notes || ""}</td>
+                <td class="muted">${Ledger.esc(p.notes || "")}</td>
                 <td class="nw">${locked ? html`<span class="muted" title="${lockReason(p)}">🔒</span>` :
                   html`<button type="button" class="ghost sm" data-act="edit">تعديل</button> <button type="button" class="ghost sm danger" data-act="del">حذف</button>`}</td>
               </tr>`;
@@ -151,7 +151,7 @@
         <div class="form-grid">
           <div class="field"><label>${isReceipt ? "العميل" : "المورد"}</label>
             <select id="party">${parties.map(function (p) {
-              return html`<option value="${p.id}" ${edit && ex.party_id === p.id ? "selected" : ""}>${p.name} (رصيد: ${money(p.balance)})</option>`;
+              return html`<option value="${p.id}" ${edit && ex.party_id === p.id ? "selected" : ""}>${Ledger.esc(p.name)} (رصيد: ${money(p.balance)})</option>`;
             }).join("")}</select>
           </div>
           <div class="field"><label>المبلغ</label><input id="amount" type="number" step="0.01" required min="0.01" value="${edit ? N(ex.amount) : ""}"></div>
@@ -165,12 +165,12 @@
             <select id="reg">
               <option value="">— بدون —</option>
               ${registers.map(function (r) {
-                return html`<option value="${r.id}" ${edit && ex.register_id === r.id ? "selected" : ""}>${r.name} (${money(r.balance)})</option>`;
+                return html`<option value="${r.id}" ${edit && ex.register_id === r.id ? "selected" : ""}>${Ledger.esc(r.name)} (${money(r.balance)})</option>`;
               }).join("")}
             </select>
           </div>
           <div class="field"><label>التاريخ</label><input id="date" type="date" value="${edit ? (ex.date || "") : new Date().toISOString().slice(0,10)}"></div>
-          <div class="field full"><label>ملاحظات</label><input id="notes" value="${edit ? (ex.notes || "") : ""}"></div>
+          <div class="field full"><label>ملاحظات</label><input id="notes" value="${edit ? Ledger.esc(ex.notes || "") : ""}"></div>
         </div>
         ${edit && ex.method === "cash" && !ex.register_id ? html`<p class="muted" style="margin:0;font-size:12px">هذا السند غير مسجَّل في أي خزينة. اختر الخزينة ثم احفظ ليُسجَّل في حركاتها.</p>` : ""}
         <div class="row gap" style="justify-content:flex-end">
