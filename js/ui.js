@@ -70,6 +70,10 @@
     banks: svg('<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>'),
     attendance: svg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4"/>'),
     "sales-sheet": svg('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'),
+    installments: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3"/>'),
+    "price-lists": svg('<path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'),
+    activity: svg('<path d="M3 12h4l3-8 4 16 3-8h4"/>'),
+    aging: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
     capital: svg('<path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><path d="M3 12h2M19 12h2"/>'),
     quotes: svg('<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>'),
     "field-reports": svg('<path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/><path d="M3 8h2M3 12h2M3 16h2"/>'),
@@ -122,6 +126,9 @@
         { key: "returns", href: "returns.html", label: "مردودات البيع" },
         { key: "customers", href: "customers.html", label: "العملاء" },
         { key: "quotes", href: "quotes.html", label: "عروض الأسعار" },
+        { key: "price-lists", href: "price-lists.html", label: "قوائم الأسعار" },
+        { key: "aging", href: "aging.html", label: "أعمار الديون والتحصيل" },
+        { key: "installments", href: "installments.html", label: "أقساط العملاء" },
         { key: "field-reports", href: "field-reports.html", label: "تقارير الزيارات والمكالمات" },
       ],
     },
@@ -177,6 +184,7 @@
     ] },
     { group: "النظام", items: [
       { key: "staff", href: "staff.html", label: "مستخدمو الشركة" },
+      { key: "activity", href: "activity.html", label: "سجل النشاط" },
       { key: "settings", href: "settings.html", label: "الإعدادات" },
     ] },
   ];
@@ -200,6 +208,10 @@
     accounts: ["دليل الحسابات", "شجرة الحسابات المحاسبية"],
     journal: ["قيود اليومية", "القيود المحاسبية التلقائية واليدوية"],
     expenses: ["المصروفات", "مصروفات التشغيل"],
+    installments: ["أقساط العملاء", "جدولة السداد · تحصيل الأقساط · تذكير واتساب"],
+    "price-lists": ["قوائم الأسعار", "جملة · نصف جملة · قطاعي · أسعار خاصة لكل عميل"],
+    activity: ["سجل النشاط", "من أضاف وحذف وعدّل ماذا ومتى"],
+    aging: ["أعمار الديون والتحصيل", "متابعة المتأخرات · تذكير واتساب"],
     capital: ["رأس المال", "إيداع رأس المال وسحب المالك · حقوق الملكية"],
     quotes: ["عروض الأسعار", "عرض سعر للعميل · طباعة · تحويل لفاتورة"],
     "field-reports": ["تقارير الزيارات والمكالمات", "نشاط المندوبين اليومي مع العملاء · متابعات"],
@@ -344,6 +356,24 @@
   window.addEventListener("error", function (e) {
     if (e && e.message && !/ResizeObserver|Script error/i.test(e.message)) surfaceError(e.message);
   });
+  // واتساب: يحوّل رقم الهاتف لصيغة دولية (مصر افتراضيًا) ويفتح محادثة برسالة جاهزة
+  function waPhone(raw) {
+    var d = String(raw || "").replace(/[^\d]/g, "");
+    if (!d) return "";
+    if (d.indexOf("00") === 0) d = d.slice(2);
+    else if (d.charAt(0) === "0") d = "20" + d.slice(1);
+    else if (d.length === 10 && d.charAt(0) === "1") d = "20" + d;
+    return d;
+  }
+  function waLink(phone, text) {
+    var p = waPhone(phone);
+    return "https://wa.me/" + p + "?text=" + encodeURIComponent(text || "");
+  }
+  function whatsapp(phone, text) {
+    var w = window.open(waLink(phone, text), "_blank", "noopener");
+    if (!w) toast("اسمح بالنوافذ المنبثقة لفتح واتساب", true);
+    else if (!waPhone(phone)) toast("لا يوجد رقم هاتف للعميل — اختر جهة الاتصال داخل واتساب");
+  }
   // رقم الإصدار (?v=…) من وسم ui.js نفسه — لتجنّب كاش قديم عند تحميل ملفات ديناميكيًا
   function verQ() {
     var me = document.querySelector('script[src*="js/ui.js"]');
@@ -380,7 +410,7 @@
     var perms = (prof && Array.isArray(prof.permissions)) ? prof.permissions : [];
     var navx = isAdmin ? NAV.concat([NAV_ADMIN]) : NAV;
     function allowed(key) {
-      return !isStaff || key === "dashboard" || (key !== "settings" && key !== "staff" && perms.indexOf(key) !== -1);
+      return !isStaff || key === "dashboard" || (key !== "settings" && key !== "staff" && key !== "activity" && perms.indexOf(key) !== -1);
     }
     if (isStaff) {
       navx = navx.map(function (g) { return { group: g.group, items: g.items.filter(function (it) { return allowed(it.key); }) }; })
@@ -627,6 +657,10 @@
     accounts: "js/pages/accounts.js",
     journal: "js/pages/journal.js",
     expenses: "js/pages/expenses.js",
+    installments: "js/pages/installments.js",
+    "price-lists": "js/pages/price-lists.js",
+    activity: "js/pages/activity.js",
+    aging: "js/pages/aging.js",
     capital: "js/pages/capital.js",
     quotes: "js/pages/quotes.js",
     "field-reports": "js/pages/field-reports.js",
@@ -1066,7 +1100,7 @@
     reconcileShell(ctx, companyBrand, companySub, DB.isDemo());
 
     var pageEl = document.getElementById("page");
-    if (!ctx.allowed(active) || (active === "staff" && ctx.isStaff)) {
+    if (!ctx.allowed(active) || ((active === "staff" || active === "activity") && ctx.isStaff)) {
       pageEl.innerHTML = '<div class="card empty" style="padding:48px 20px"><h3 style="margin:0 0 8px">غير مصرّح لك بهذه الصفحة</h3><p class="muted" style="margin:0">تواصل مع مالك الشركة لإضافة الصلاحية.</p></div>';
       return null;
     }
@@ -1089,6 +1123,8 @@
     fmtDate: fmtDate,
     toast: toast,
     need: need,
+    waLink: waLink,
+    whatsapp: whatsapp,
     ACCOUNT_TYPES: ACCOUNT_TYPES,
     typeLabel: typeLabel,
     exportCSV: exportCSV,

@@ -21,7 +21,7 @@
   var mine = function (id) { return moves.filter(function (m) { return m.bank_id === id; }); };
   var plus = function (m) { return m.type === "deposit"; };
   function bal(b) { return N(b.opening_balance) + mine(b.id).reduce(function (s, m) { return s + (plus(m) ? 1 : -1) * N(m.amount); }, 0); }
-  var locked = function (m) { return !!m.cheque_id; };
+  var locked = function (m) { return !!(m.cheque_id || m.ref); };
 
   function rowsFor(id) {
     var list = mine(id).slice().sort(function (a, c) { return a.date === c.date ? String(a.created_at).localeCompare(String(c.created_at)) : (a.date < c.date ? -1 : 1); });
@@ -71,7 +71,7 @@
           return html`<tr data-id="${m.id}"><td dir="ltr">${r.n}</td><td dir="ltr">${m.date}</td><td class="muted">${esc(m.notes || "")}${m.cheque_id ? ' <span class="badge">شيك</span>' : ""}</td>
             <td><span class="badge ${plus(m) ? "ok" : "warn"}">${plus(m) ? "إيداع" : "سحب"}</span></td><td class="in-c">${plus(m) ? money(m.amount) : ""}</td><td class="out-c">${plus(m) ? "" : money(m.amount)}</td>
             <td class="accent"><b>${money(r.balance)}</b></td>
-            <td><div class="actions-cell">${locked(m) ? '<a class="small button" href="cheques.html">الشيكات</a>' : '<button class="small danger" data-del="' + m.id + '">حذف</button>'}</div></td></tr>`;
+            <td><div class="actions-cell">${locked(m) ? (m.cheque_id ? '<a class="small button" href="cheques.html">الشيكات</a>' : '<span class="muted" title="حركة مرتبطة برأس المال أو قسط — تُدار من مصدرها">🔒 مرتبطة</span>') : '<button class="small danger" data-del="' + m.id + '">حذف</button>'}</div></td></tr>`;
         }).join("") || '<tr><td colspan="8" class="empty">لا توجد حركات</td></tr>'}
       </tbody></table></div>`;
     document.getElementById("d-dep").onclick = function () { openMove("deposit"); };

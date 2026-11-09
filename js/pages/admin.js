@@ -44,8 +44,36 @@
 
   page.innerHTML = '<div class="stack"><div class="skel" style="height:110px"></div><div class="skel" style="height:360px"></div></div>';
 
+  // Supabase يقطع أي استعلام عند 1000 صف (max-rows)، فنجلب المستخدمين صفحة صفحة حتى العدد الكلي
+  async function fetchAllUsers() {
+    var step = 1000;
+    var first = await client.rpc("admin_users", {}, { count: "exact" }).range(0, step - 1);
+    if (first.error) return first;
+    var out = (first.data || []).slice(), total = first.count || out.length;
+    for (var from = step; from < total; from += step) {
+      var nx = await client.rpc("admin_users").range(from, from + step - 1);
+      if (nx.error) return nx;
+      out = out.concat(nx.data || []);
+    }
+    var seen = {};
+    out = out.filter(function (u) { if (seen[u.id]) return false; seen[u.id] = 1; return true; });
+    return { data: out, error: null };
+  }
+  // مجموع حقل `total` لكل سجلات جدول شركة (بصفحات 1000 مرتبة بالمعرّف لثبات الترقيم)
+  async function sumTotals(companyId, tb) {
+    var sum = 0, from = 0, step = 1000;
+    for (;;) {
+      var r = await client.from("records").select("id,total:data->>total").eq("company_id", companyId).eq("tbl", tb).order("id", { ascending: true }).range(from, from + step - 1);
+      if (r.error) throw new Error(r.error.message);
+      (r.data || []).forEach(function (x) { sum += Number(x.total) || 0; });
+      if ((r.data || []).length < step) break;
+      from += step;
+    }
+    return sum;
+  }
+
   async function load() {
-    var r = await client.rpc("admin_users");
+    var r = await fetchAllUsers();
     if (r.error) { page.innerHTML = '<div class="card error">تعذّر تحميل المستخدمين: ' + esc(r.error.message) + "</div>"; return false; }
     users = r.data || [];
     compCount = {};
@@ -387,8 +415,7 @@
     // ملخص مالي سريع
     var tot = {};
     await Promise.all(["sales", "purchases"].map(async function (tb) {
-      var r = await client.from("records").select("data").eq("company_id", u.company_id).eq("tbl", tb).limit(1000);
-      tot[tb] = (r.data || []).reduce(function (s, x) { return s + (Number(x.data.total) || 0); }, 0);
+      try { tot[tb] = await sumTotals(u.company_id, tb); } catch (e) { tot[tb] = 0; }
     }));
     body.innerHTML = html`
       <div class="det-kpis" style="margin-bottom:14px">

@@ -381,7 +381,7 @@
     if (!can(action)) throw new Error(action === "delete" ? "غير مصرّح لك بالحذف — تواصل مع مالك الشركة" : "غير مصرّح لك بتعديل المستندات المحفوظة — تواصل مع مالك الشركة");
   }
   var GUARDED_DELETE = ["customers", "suppliers", "products", "accounts", "employees", "cash_registers", "treasury_tabs", "banks", "expenses", "warehouses",
-    "cheques", "cash_counts", "sales", "purchases", "sale_returns", "purchase_returns", "bank_movements", "customer_groups", "supplier_groups", "product_groups", "quotes"];
+    "cheques", "cash_counts", "sales", "purchases", "sale_returns", "purchase_returns", "bank_movements", "customer_groups", "supplier_groups", "product_groups", "quotes", "price_lists", "price_list_items", "installment_plans"];
   // يُختم كل سجل رئيسي بمن أنشأه (بدون سطور البنود/القيود لتقليل الحجم)
   function mkItem(table, row) {
     var base = { id: uid(), created_at: new Date().toISOString() };
@@ -446,10 +446,21 @@
     if (GUARDED_DELETE.indexOf(table) !== -1) assertCan("delete");
     return removeMany(table, [id]);
   }
+  // سجل النشاط: يُسجَّل حذف المستندات والأطراف الرئيسية (من حذف؟ وماذا؟) — لا يمنع الحذف أبدًا لو فشل التسجيل
+  var AUDIT_DEL = ["sales", "purchases", "sale_returns", "purchase_returns", "payments", "expenses", "customers", "suppliers", "products", "quotes", "cheques", "cash_registers", "banks", "employees", "visit_reports", "price_lists", "installment_plans"];
+  async function auditDelete(table, ids) {
+    var rows = ((await list(table)) || []).filter(function (r) { return ids.indexOf(r.id) !== -1; });
+    if (!rows.length) return;
+    await insertRows(rows.map(function (r) {
+      return { table: "activity_log", row: { action: "delete", tbl: table, ref_id: r.id, ref_number: r.number != null ? r.number : "", ref_name: r.name || "", amount: Number(r.total != null ? r.total : r.amount) || 0,
+        party_id: r.customer_id || r.supplier_id || r.party_id || "", kind: r.kind || "", doc_date: r.date || "" } };
+    }));
+  }
   async function removeMany(table, ids) {
     if (fatal) throw new Error(fatal);
     ids = (ids || []).filter(Boolean);
     if (!ids.length) return true;
+    if (AUDIT_DEL.indexOf(table) !== -1 && ids.length <= 5) { try { await auditDelete(table, ids); } catch (e) { /* التدقيق اختياري */ } }
     if (demoMode) {
       var d = loadDemo();
       var m = {}; ids.forEach(function (i) { m[i] = 1; });

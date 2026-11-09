@@ -67,6 +67,7 @@ window.InvoiceList = {
               <td><div class="actions-cell">
                 <a class="small button" href="invoice.html?kind=${kind}&id=${d.id}">تعديل</a>
                 <button type="button" class="small" data-act="print" data-id="${d.id}">طباعة</button>
+                <button type="button" class="small" data-act="wa" data-id="${d.id}">واتساب</button>
                 <button type="button" class="small danger" data-act="del" data-id="${d.id}">${K.sign < 0 ? "إلغاء" : "حذف"}</button>
               </div></td></tr>`;
           }).join("") || html`<tr><td colspan="${K.paidable ? 8 : 6}" class="empty">لا توجد مستندات</td></tr>`}
@@ -124,6 +125,14 @@ window.InvoiceList = {
       if (b) {
         var id = b.getAttribute("data-id"), d = docs.filter(function (x) { return x.id === id; })[0];
         if (b.getAttribute("data-act") === "print") { printDoc(d); return; }
+        if (b.getAttribute("data-act") === "wa") {
+          var pty = parties.filter(function (p) { return p.id === d[K.pkey]; })[0] || {};
+          var due = Math.max(0, N(d.total) - N(d.paid));
+          var co = (DB.getCompany() || {}).name || "";
+          var txt = "السلام عليكم " + (pty.name || "") + "،\n" + K.title + " رقم " + d.number + " بتاريخ " + day(d) + (co ? " من " + co : "") + "\nالإجمالي: " + money(d.total) +
+            (K.paidable ? "\nالمدفوع: " + money(d.paid) + "\nالمتبقي: " + money(due) : "") + "\nشكرًا لتعاملكم معنا.";
+          UI.whatsapp(pty.phone, txt); return;
+        }
         var msg = K.sign < 0 ? "إلغاء هذا المرتجع؟ سيتم عكس أثره على المخزون والحساب والقيود." : "حذف هذا المستند؟ سيتم عكس أثره على المخزون والحساب والقيود وحركة الخزينة المرتبطة.";
         if (!confirm(msg)) return;
         try { await Invoices.remove(kind, id); if (openId === id) { openId = ""; document.getElementById("detail").innerHTML = ""; } UI.toast("تم"); await load(); }

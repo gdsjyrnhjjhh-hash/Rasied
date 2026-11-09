@@ -12,7 +12,8 @@
   var UNITS = ["قطعة", "كرتونة", "علبة", "كيلو", "جرام", "متر", "لتر", "شيكارة", "كيس", "جردل", "جركن", "برميل", "دستة", "طن"];
 
   var parties = [], products = [], reps = [], registers = [];
-  var items = [], editIdx = -1, existing = null, oldLines = [], party = null, curProd = null;
+  var items = [], editIdx = -1, existing = null, oldLines = [], party = null, curProd = null, plist = null;
+  function priceFor(p) { return K.price === "unit_cost" ? N(p.cost) : (plist ? Ledger.priceWith(plist, p) : N(p.price)); }
   var company = Object.assign({ name: "الشركة", phone: "", address: "", tax_id: "" }, DB.getCompany());
   var vatRate = company.vat_rate != null ? N(company.vat_rate) : 14, vatOn = company.vat_enabled !== false;
 
@@ -115,9 +116,10 @@
   }
 
   function selectParty(p) {
-    party = p; $("f-party").value = p ? p.name : "";
+    party = p; $("f-party").value = p ? p.name : ""; plist = null;
     var note = $("party-note");
     if (!p) { note.innerHTML = ""; return; }
+    if (kind === "sale" && p.price_list_id) Ledger.loadPriceList(p.price_list_id).then(function (pl) { if (party !== p || !pl) return; plist = pl; note.innerHTML += "<span>قائمة الأسعار: <b>" + esc(pl.name) + (pl.pct ? " (" + (pl.pct > 0 ? "+" : "") + pl.pct + "%)" : "") + "</b></span>"; }).catch(function () {});
     var bal = N(p.balance), lim = N(p.credit_limit);
     note.innerHTML = (p.phone ? '<span dir="ltr">' + esc(p.phone) + "</span>" : "") + "<span>الرصيد: <b>" + money(bal) + "</b></span>" +
       (lim > 0 ? "<span>حد الائتمان: <b>" + money(lim) + "</b></span>" : "") + (lim > 0 && bal > lim ? '<span class="warn">تجاوز الحد</span>' : "");
@@ -126,7 +128,7 @@
     return parties.filter(function (p) { return !t || (p.name + " " + (p.phone || "") + " " + (p.code || "")).toLowerCase().indexOf(t) !== -1; }).slice(0, 30)
       .map(function (p) { return { id: p.id, label: p.name, small: (p.phone || "") + (p.balance ? " · " + money(p.balance) : "") }; });
   }, function (it) { selectParty(parties.filter(function (p) { return p.id === it.id; })[0]); });
-  $("f-party").addEventListener("input", function () { if (party && $("f-party").value !== party.name) { party = null; $("party-note").innerHTML = ""; } });
+  $("f-party").addEventListener("input", function () { if (party && $("f-party").value !== party.name) { party = null; plist = null; $("party-note").innerHTML = ""; } });
 
   function stockText(p) {
     var el = $("p-stock");
@@ -138,15 +140,30 @@
   function selectProduct(p) {
     curProd = p; $("p-name").value = p ? p.name : "";
     if (p) {
-      $("p-price").value = K.price === "unit_cost" ? N(p.cost) : N(p.price);
+      $("p-price").value = priceFor(p);
       $("p-unit").value = UNITS.indexOf(p.unit) !== -1 ? p.unit : "";
       stockText(p); $("p-qty").focus(); $("p-qty").select();
     } else stockText(null);
   }
   suggest($("p-name"), $("sg-prod"), function (t) {
-    return products.filter(function (p) { return !t || (p.name + " " + (p.sku || "")).toLowerCase().indexOf(t) !== -1; }).slice(0, 30)
-      .map(function (p) { return { id: p.id, label: p.name, small: "متاح " + money(p.qty) + " · " + money(K.price === "unit_cost" ? p.cost : p.price) }; });
+    return products.filter(function (p) { return !t || (p.name + " " + (p.sku || "") + " " + (p.barcode || "")).toLowerCase().indexOf(t) !== -1; }).slice(0, 30)
+      .map(function (p) { return { id: p.id, label: p.name, small: "متاح " + money(p.qty) + " · " + money(priceFor(p)) }; });
   }, function (it) { selectProduct(products.filter(function (p) { return p.id === it.id; })[0]); });
+  // ماسح الباركود (يكتب الرقم ثم Enter): يضيف الصنف مباشرة بكمية 1، ولو موجود يزيد كميته
+  $("p-name").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var code = $("p-name").value.trim().toLowerCase();
+    if (!code) return;
+    var hit = products.filter(function (p) { return (p.barcode && String(p.barcode).toLowerCase() === code) || (p.sku && String(p.sku).toLowerCase() === code); })[0];
+    if (!hit) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    $("sg-prod").classList.remove("open");
+    var at = items.findIndex(function (x) { return x.product_id === hit.id; });
+    if (at >= 0 && editIdx < 0) { items[at].qty = N(items[at].qty) + 1; clearProduct(); $("p-name").focus(); return; }
+    selectProduct(hit);
+    $("p-qty").value = 1;
+    addItem();
+  }, true);
   $("p-name").addEventListener("input", function () { if (curProd && $("p-name").value !== curProd.name) { curProd = null; stockText(null); } });
 
   /* ---------- البنود والإجماليات ---------- */

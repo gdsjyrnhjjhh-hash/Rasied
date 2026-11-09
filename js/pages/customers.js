@@ -1,4 +1,5 @@
 (async function () {
+  var priceLists = [];
   var page = await UI.init("customers");
   if (!page) return;
   try { await UI.need("js/groups.js", "Groups"); } catch (e) { UI.toast(e.message, true); }
@@ -88,6 +89,7 @@
           <div class="field"><label>الهاتف</label><input id="phone" dir="ltr" value="${esc(c.phone || "")}"></div>
           <div class="field"><label>الكود</label><input id="code" dir="ltr" value="${esc(c.code || "")}" placeholder="تلقائي"></div>
           <div class="field"><label>رصيد افتتاحي</label><input id="opening" type="number" step="0.01" value="${c.opening_balance || 0}"></div>
+          <div class="field"><label>قائمة الأسعار</label><select id="plist"><option value="">— الأسعار الأساسية —</option>${priceLists.map(function (l) { return html`<option value="${l.id}" ${c.price_list_id === l.id ? "selected" : ""}>${esc(l.name)}</option>`; }).join("")}</select></div>
           <div class="field"><label>حد الائتمان (0 = بدون)</label><input id="limit" type="number" min="0" step="0.01" value="${c.credit_limit || 0}"></div>
           <div class="field"><label>العنوان</label><input id="address" value="${esc(c.address || "")}"></div>
           <div class="field full"><label>ملاحظات</label><input id="notes" value="${esc(c.notes || "")}"></div>
@@ -112,6 +114,7 @@
         credit_limit: Number(document.getElementById("limit").value) || 0,
         address: document.getElementById("address").value.trim(),
         group_id: document.getElementById("group").value || "",
+        price_list_id: document.getElementById("plist").value || "",
       };
       try {
         if (isNew) { payload.balance = payload.opening_balance; await DB.insert("customers", payload); }
@@ -126,8 +129,8 @@
 
   async function load() {
     try {
-      var d = await Promise.all([DB.list("customers"), DB.list(GT).catch(function () { return []; })]);
-      items = d[0] || []; groups = d[1] || [];
+      var d = await Promise.all([DB.list("customers"), DB.list(GT).catch(function () { return []; }), DB.list("price_lists").catch(function () { return []; })]);
+      items = d[0] || []; groups = d[1] || []; priceLists = (d[2] || []).filter(function (l) { return l.active !== false; });
       fillGsel(); render();
     } catch (err) {
       document.getElementById("list").innerHTML = '<div class="empty">تعذّر تحميل العملاء: ' + esc(err.message) + '</div>';

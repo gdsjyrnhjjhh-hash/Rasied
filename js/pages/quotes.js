@@ -50,6 +50,7 @@
               html`<select data-act="status" style="min-width:110px">${["draft", "sent", "accepted", "rejected"].map(function (k) { return html`<option value="${k}" ${q.status === k ? "selected" : ""}>${STATUS[k]}</option>`; }).join("")}</select>`}</td>
             <td class="nw">
               <button type="button" class="ghost sm" data-act="print">طباعة</button>
+              <button type="button" class="ghost sm" data-act="wa">واتساب</button>
               ${locked ? "" : html`<button type="button" class="sm primary" data-act="convert">تحويل لفاتورة</button> <button type="button" class="ghost sm" data-act="edit">تعديل</button> <button type="button" class="ghost sm danger" data-act="del">حذف</button>`}
             </td></tr>`; }).join("")}</tbody>
       </table>`;
@@ -59,6 +60,7 @@
   function openEditor(ex) {
     var q = ex || { date: today(), valid_until: addDays(today(), 7), status: "draft", lines: [], discount: 0, vat_rate: vatOn ? vatRate : 0, notes: "", terms: "الأسعار سارية حتى تاريخ انتهاء العرض." };
     var lines = (q.lines || []).map(function (l) { return Object.assign({}, l); });
+    var qlist = null;
     var ov = document.createElement("div");
     ov.className = "modal-overlay";
     ov.innerHTML = html`<div class="modal card" style="max-width:860px;width:96vw;max-height:92vh;overflow:auto">
@@ -114,7 +116,7 @@
       if (k === "name") {
         l.name = inp.value;
         var p = products.filter(function (x) { return x.name === inp.value; })[0];
-        if (p) { l.product_id = p.id; if (!N(l.price)) l.price = N(p.price); if (!l.unit && UNITS.indexOf(p.unit) !== -1) l.unit = p.unit; if (!N(l.qty)) l.qty = 1; drawLines(); return; }
+        if (p) { l.product_id = p.id; if (!N(l.price)) l.price = Ledger.priceWith(qlist, p); if (!l.unit && UNITS.indexOf(p.unit) !== -1) l.unit = p.unit; if (!N(l.qty)) l.qty = 1; drawLines(); return; }
         l.product_id = "";
       } else if (k === "qty" || k === "price") l[k] = N(inp.value); else l[k] = inp.value;
       tr.querySelector("[data-sum]").textContent = money(N(l.qty) * N(l.price)); totals();
@@ -123,6 +125,13 @@
       var b = e.target.closest("[data-rm]"); if (!b) return;
       lines.splice(Number(b.getAttribute("data-rm")), 1); drawLines();
     });
+    // قائمة أسعار العميل تُطبَّق على الأصناف المضافة بعد اختياره
+    function syncList() {
+      var cu = customers.filter(function (c) { return c.name === $("q-party").value.trim(); })[0];
+      if (!cu || !cu.price_list_id) { qlist = null; return; }
+      Ledger.loadPriceList(cu.price_list_id).then(function (pl) { qlist = pl; if (pl) UI.toast("قائمة الأسعار: " + pl.name); }).catch(function () {});
+    }
+    $("q-party").addEventListener("change", syncList); syncList();
     $("q-addline").onclick = function () { lines.push({ product_id: "", name: "", qty: 1, price: 0, unit: "" }); drawLines(); };
     $("q-disc").oninput = totals; $("q-vat").onchange = totals;
     if (!lines.length) lines.push({ product_id: "", name: "", qty: 1, price: 0, unit: "" });
@@ -189,6 +198,12 @@
     try {
       if (act === "edit") { DB.assertCan("edit"); openEditor(q); }
       else if (act === "print") printQuote(q);
+      else if (act === "wa") {
+        var cu = customers.filter(function (c) { return c.id === q.party_id; })[0];
+        var items = (q.lines || []).map(function (l) { return "- " + l.name + ": " + l.qty + (l.unit ? " " + l.unit : "") + " × " + money(l.price); }).join("\n");
+        UI.whatsapp((cu && cu.phone) || q.party_phone, "السلام عليكم " + (q.party_name || "") + "،\nعرض سعر رقم " + q.number + (company.name ? " من " + company.name : "") + "\n" + items +
+          (N(q.discount) > 0 ? "\nالخصم: " + money(q.discount) : "") + "\nالإجمالي: " + money(q.total) + (q.valid_until ? "\nالعرض ساري حتى " + q.valid_until : "") + "\nفي انتظار ردكم.");
+      }
       else if (act === "convert") location.href = "invoice.html?kind=sale&quote=" + encodeURIComponent(q.id);
       else if (act === "del") {
         DB.assertCan("delete");

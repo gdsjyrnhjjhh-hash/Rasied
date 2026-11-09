@@ -60,6 +60,22 @@
     return { party: party, opening: from ? before : opening, rows: rows, closing: run, totals: { inc: tin, dec: tdec }, full: full };
   }
 
+  // قوائم الأسعار: نسبة تعديل على السعر الأساسي + أسعار مخصصة لأصناف بعينها
+  async function loadPriceList(id) {
+    if (!id) return null;
+    var lists = (await DB.list("price_lists")) || [];
+    var pl = lists.filter(function (l) { return l.id === id; })[0];
+    if (!pl || pl.active === false) return null;
+    var items = (await DB.listWhere("price_list_items", "price_list_id", id)) || [], over = {};
+    items.forEach(function (it) { over[it.product_id] = N(it.price); });
+    return { id: pl.id, name: pl.name, pct: N(pl.adjust_pct), over: over };
+  }
+  function priceWith(pl, p) {
+    var base = N(p.price);
+    if (!pl) return base;
+    if (pl.over[p.id] != null) return pl.over[p.id];
+    return Math.round(base * (1 + pl.pct / 100) * 100) / 100;
+  }
   async function recompute(type, id) {
     var s = await statement(type, id);
     await DB.update(type === "customer" ? "customers" : "suppliers", id, { balance: s.full });
@@ -306,6 +322,7 @@
   window.Ledger = {
     trial: trial,
     modal: modal, esc: esc, val: val,
+    loadPriceList: loadPriceList, priceWith: priceWith,
     KIND_LABEL: KIND_LABEL, accountTree: accountTree, accountDescendants: accountDescendants, statement: statement, recompute: recompute, recomputeAll: recomputeAll,
     treasuryMove: treasuryMove, transfer: transfer, treasuryStatement: treasuryStatement,
     recordPayment: recordPayment, recordAdjustment: recordAdjustment, today: today,

@@ -60,7 +60,7 @@
     };
     var body = "", flat = !!q || !groups.length;
     if (flat) {
-      var rows = scope.filter(function (p) { return !q || (p.name + " " + (p.sku || "")).toLowerCase().indexOf(q) !== -1; });
+      var rows = scope.filter(function (p) { return !q || (p.name + " " + (p.sku || "") + " " + (p.barcode || "")).toLowerCase().indexOf(q) !== -1; });
       body = rows.length ? rows.map(function (p) { return row(p, 0); }).join("") : '<tr><td colspan="10" class="empty">لا توجد أصناف</td></tr>';
     } else {
       var nodes = Groups.layout(groups, scope, { collapsed: collapsed, agg: function (p) { return (p.qty || 0) * (p.cost || 0); }, root: root });
@@ -86,6 +86,7 @@
         <div class="form-grid">
           <div class="field full"><label>المجموعة (تحت أي مجموعة يوضع الصنف)</label><select id="group" autocomplete="off">${Groups.options(groups, p.group_id || "", null, "— بدون مجموعة —")}</select></div>
           <div class="field"><label>الكود</label><input id="sku" value="${esc(p.sku || "")}"></div>
+          <div class="field"><label>الباركود <span class="opt">اختياري</span></label><input id="barcode" dir="ltr" inputmode="numeric" placeholder="امسح الباركود هنا" value="${esc(p.barcode || "")}"></div>
           <div class="field"><label>الاسم</label><input id="name" required value="${esc(p.name || "")}"></div>
           <div class="field"><label>الوحدة</label><input id="unit" value="${esc(p.unit || "قطعة")}"></div>
           <div class="field"><label>تكلفة الشراء</label><input id="cost" type="number" step="0.01" value="${p.cost || 0}"></div>
@@ -111,6 +112,7 @@
       e.preventDefault();
       var payload = {
         sku: document.getElementById("sku").value.trim(),
+        barcode: document.getElementById("barcode").value.trim(),
         name: document.getElementById("name").value.trim(),
         unit: document.getElementById("unit").value.trim(),
         cost: Number(document.getElementById("cost").value) || 0,

@@ -175,3 +175,57 @@ I18n.add({
   "حذف هذه الحركة؟ سيُعكس أثرها على الخزينة/البنك والقيود.": "Delete this entry? Its effect on the cash register/bank and journal will be reversed.",
   "رأس مال": "Capital"
 });
+I18n.add({
+  "أعمار الديون والتحصيل": "Debt aging & collections", "متابعة المتأخرات · تذكير واتساب": "Track overdue balances · WhatsApp reminders",
+  "اعرف مين متأخر وبقاله قد إيه · تذكير واتساب بضغطة · الأقدم يُسدَّد أولًا": "See who is overdue and for how long · one-tap WhatsApp reminder · oldest invoices are settled first",
+  "إجمالي المستحق لك": "Total owed to you", "إجمالي المستحق عليك": "Total you owe", "متأخر أكثر من 30 يوم": "Overdue over 30 days", "متأخر أكثر من 60 يوم": "Overdue over 60 days", "متأخر أكثر من 90 يوم": "Overdue over 90 days",
+  "عدد العملاء المدينين": "Customers with balance", "عدد الموردين الدائنين": "Suppliers owed", "كل المدينين": "All debtors", "عرض": "Show",
+  "0–30 يوم": "0–30 days", "31–60 يوم": "31–60 days", "61–90 يوم": "61–90 days", "أكثر من 90": "Over 90", "تذكير واتساب": "WhatsApp reminder", "واتساب": "WhatsApp",
+  "لا توجد نتائج": "No results", "لا توجد مستحقات للموردين": "No supplier balances due", "اسم أو هاتف...": "Name or phone...",
+  "اسمح بالنوافذ المنبثقة لفتح واتساب": "Allow pop-ups to open WhatsApp", "لا يوجد رقم هاتف للعميل — اختر جهة الاتصال داخل واتساب": "No phone number on file — pick the contact inside WhatsApp",
+  "الباركود": "Barcode", "امسح الباركود هنا": "Scan barcode here",
+  "نسخة احتياطية": "Backup", "تنزيل نسخة احتياطية كاملة": "Download full backup", "تم تنزيل النسخة الاحتياطية": "Backup downloaded", "جارٍ التجهيز...": "Preparing...",
+  "تنزيل كل بيانات شركتك (العملاء، الموردين، الأصناف، الفواتير، السندات، القيود...) في ملف واحد تحتفظ به عندك. ننصح بأخذ نسخة أسبوعيًا.": "Download all your company data (customers, suppliers, products, invoices, vouchers, journal...) in one file you keep. We recommend a weekly backup."
+});
+I18n.add({
+  "سجل النشاط": "Activity log", "من أضاف وحذف وعدّل ماذا ومتى": "Who added, deleted or edited what, and when", "من أضاف أو حذف أو عدّل ماذا ومتى · للمالك فقط": "Who added, deleted or edited what, and when · owner only",
+  "يُسجَّل هنا كل ما يُضاف، وكل ما يُحذف من المستندات والأطراف، وتعديل السندات. تعديلات الفواتير العادية لا تُسجَّل بعد.": "Everything added, everything deleted from documents and parties, and voucher edits are logged here. Regular invoice edits are not logged yet.",
+  "السجلات القديمة قبل تفعيل السجل تظهر كإضافات فقط ولا يظهر ما حُذف منها.": "Older records from before logging appear as additions only; earlier deletions are not shown.",
+  "المستخدم": "User", "العملية": "Action", "النوع": "Type", "التفاصيل": "Details", "إضافات": "Additions", "تعديلات": "Edits", "إضافة": "Added", "تعديل": "Edit",
+  "آخر 30 يومًا": "Last 30 days", "الكل": "All", "لا توجد أنشطة في هذه الفترة": "No activity in this period", "عرض المزيد": "Show more", "رقم أو اسم...": "Number or name...",
+  "ابدأ مع رصيد في 5 خطوات": "Get started with Rasied in 5 steps", "إخفاء": "Hide", "أكمل بيانات شركتك (الهاتف والعنوان)": "Complete your company details (phone & address)",
+  "أضف أول عميل": "Add your first customer", "أضف أول صنف": "Add your first product", "أنشئ خزينة لنقديتك": "Create a cash register", "سجّل أول فاتورة بيع": "Record your first sales invoice", "الخزائن": "Cash registers"
+});
+I18n.add({
+  "استعادة نسخة احتياطية": "Restore a backup", "اختيار ملف نسخة احتياطية...": "Choose a backup file...", "ابدأ الاستعادة": "Start restore", "استرجاع كامل": "Full restore",
+  "استرجاع البيانات الأساسية المحذوفة": "Restore deleted master data", "الاستعادة لمالك الشركة فقط": "Restore is for the company owner only",
+  "هذا ليس ملف نسخة احتياطية من رصيد": "This is not a Rasied backup file", "الملف لا يحتوي بيانات صالحة": "The file contains no valid data", "الملف كبير جدًا": "File is too large",
+  "لا يوجد جديد للاستعادة — كل بيانات الملف موجودة بالفعل": "Nothing new to restore — all data in the file already exists", "لا توجد بيانات أساسية محذوفة لاستعادتها": "No deleted master data to restore",
+  "جارٍ حفظ نسخة من وضعك الحالي...": "Saving a copy of your current data...", "جارٍ الاستعادة...": "Restoring..."
+});
+I18n.add({
+  "قوائم الأسعار": "Price lists", "جملة · نصف جملة · قطاعي · أسعار خاصة لكل عميل": "Wholesale · semi-wholesale · retail · custom prices per customer",
+  "جملة · نصف جملة · قطاعي · أسعار خاصة — تُربط بالعميل وتُطبَّق تلقائيًا في فاتورة البيع وعرض السعر": "Wholesale · semi-wholesale · retail · special prices — linked to the customer and applied automatically in sales invoices and quotations",
+  "+ قائمة أسعار": "+ Price list", "قائمة أسعار جديدة": "New price list", "تعديل قائمة أسعار": "Edit price list", "اسم القائمة": "List name", "القائمة": "List",
+  "التعديل على الأساسي": "Adjustment vs. base", "أسعار خاصة": "Special prices", "نشطة": "Active", "موقوفة": "Inactive", "أسعار الأصناف": "Item prices", "حفظ الأسعار": "Save prices",
+  "السعر الأساسي": "Base price", "سعر القائمة": "List price", "سعر خاص": "Special price", "بحث عن صنف...": "Search item...",
+  "اترك «السعر الخاص» فارغًا لتطبيق النسبة تلقائيًا.": "Leave “Special price” empty to apply the percentage automatically.",
+  "قائمة الأسعار": "Price list", "— الأسعار الأساسية —": "— Base prices —", "قائمة الأسعار:": "Price list:",
+  "اكتب اسم القائمة": "Enter the list name", "يوجد قائمة بنفس الاسم": "A list with this name already exists", "نسبة التعديل غير منطقية": "The adjustment percentage is not valid",
+  "لا توجد قوائم — اضغط «+ قائمة أسعار» (مثال: جملة -10%)": "No lists — click “+ Price list” (e.g. Wholesale -10%)"
+});
+I18n.add({
+  "أقساط العملاء": "Customer installments", "جدولة السداد · تحصيل الأقساط · تذكير واتساب": "Payment scheduling · collect installments · WhatsApp reminder",
+  "جدولة سداد مديونية العميل · تحصيل كل قسط كسند قبض يدخل الخزينة · تذكير واتساب": "Schedule a customer's debt · each installment is collected as a receipt voucher into the treasury · WhatsApp reminder",
+  "+ خطة تقسيط": "+ Installment plan", "خطة تقسيط جديدة": "New installment plan", "الأقساط": "Installments", "الخطط": "Plans", "أقساط متأخرة": "Overdue installments",
+  "تستحق خلال 7 أيام": "Due within 7 days", "إجمالي المتبقي": "Total remaining", "خطط نشطة": "Active plans", "غير المسددة": "Unpaid", "متأخرة": "Overdue", "القادمة": "Upcoming", "المسددة": "Paid",
+  "الخطة": "Plan", "القسط": "Installment", "الاستحقاق": "Due date", "المسدد": "Paid", "متأخر": "Late", "هذا الأسبوع": "This week", "قادم": "Upcoming", "مسدد": "Paid", "(جزئي)": "(partial)",
+  "تحصيل": "Collect", "الجدول": "Schedule", "إنشاء الخطة": "Create plan", "إجمالي الخطة": "Plan total", "التقدم": "Progress", "القسط القادم": "Next installment",
+  "المبلغ المراد تقسيطه": "Amount to finance", "عدد الأقساط": "Number of installments", "الدورية": "Frequency", "شهري": "Monthly", "كل أسبوعين": "Every 2 weeks", "أسبوعي": "Weekly",
+  "تاريخ القسط الأول": "First installment date", "فاتورة بيع مرتبطة": "Linked sales invoice", "معاينة الجدول": "Schedule preview", "يُودَع في": "Deposit into", "التحصيلات": "Collections",
+  "تم إنشاء خطة التقسيط": "Installment plan created", "تم تحصيل القسط": "Installment collected", "تم إلغاء التحصيل": "Collection cancelled", "تم حذف الخطة": "Plan deleted",
+  "أنشئ خزينة أو حسابًا بنكيًا أولًا": "Create a cash register or bank account first", "المبلغ أكبر من المتبقي من القسط": "Amount exceeds the remaining installment",
+  "عدد الأقساط من 2 إلى 60": "Number of installments must be 2 to 60", "اكتب المبلغ المراد تقسيطه": "Enter the amount to finance", "حدّد تاريخ القسط الأول": "Set the first installment date",
+  "لا يمكن حذف خطة بها تحصيلات — ألغِ التحصيلات أولًا": "Can’t delete a plan with collections — cancel the collections first", "الإلغاء يجعل رصيد الخزينة سالبًا": "Cancelling would make the register balance negative",
+  "هذا السند ناتج عن تحصيل قسط — ألغِ التحصيل من صفحة الأقساط": "This voucher comes from an installment collection — cancel it from the Installments page", "أكمل البيانات": "Complete the data", "أضف عميلًا أولًا": "Add a customer first"
+});

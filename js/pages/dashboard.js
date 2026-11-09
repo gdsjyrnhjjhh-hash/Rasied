@@ -202,8 +202,30 @@
     var net = cur.s - cur.p;
     var best = S.reduce(function (a, b) { return b.v > a.v ? b : a; }, S[0]);
 
-    page.innerHTML = html`
+    // معالج البداية: يظهر للمالك فقط حتى تكتمل الخطوات الأساسية أو يغلقه
+  var obHtml = "";
+  (function () {
+    var off = false; try { off = localStorage.getItem("rasied_ob_off") === "1"; } catch (e) {}
+    if (off || !DB.me().owner) return;
+    var steps = [
+      ["أكمل بيانات شركتك (الهاتف والعنوان)", !!(company.phone || company.address), "settings.html", "الإعدادات"],
+      ["أضف أول عميل", customers.length > 0, "customers.html", "العملاء"],
+      ["أضف أول صنف", products.length > 0, "products.html", "الأصناف"],
+      ["أنشئ خزينة لنقديتك", registers.length > 0, "cash-registers.html", "الخزائن"],
+      ["سجّل أول فاتورة بيع", sales.length > 0, "invoice.html?kind=sale", "فاتورة بيع"],
+    ];
+    var done = steps.filter(function (s) { return s[1]; }).length;
+    if (done === steps.length) return;
+    obHtml = '<div class="card stack" id="ob-card"><div class="row gap" style="justify-content:space-between;align-items:center"><div><b>ابدأ مع رصيد في 5 خطوات</b> <span class="muted">(' + done + " من " + steps.length + ')</span></div><button type="button" class="ghost sm" id="ob-off">إخفاء</button></div>' +
+      '<div style="height:6px;border-radius:6px;background:var(--border,#e5e7eb);overflow:hidden"><div style="height:100%;width:' + Math.round(done / steps.length * 100) + '%;background:var(--primary,#1e3a8a)"></div></div>' +
+      '<div class="stack" style="gap:6px">' + steps.map(function (s) {
+        return '<div class="row gap" style="justify-content:space-between;align-items:center"><span style="' + (s[1] ? "text-decoration:line-through;opacity:.6" : "") + '">' + (s[1] ? "✓ " : "○ ") + s[0] + "</span>" + (s[1] ? "" : '<a class="button small" href="' + s[2] + '">' + s[3] + "</a>") + "</div>";
+      }).join("") + "</div></div>";
+  })();
+
+  page.innerHTML = html`
     <div class="stack">
+      ${obHtml}
       <div class="dash-head">
         <div>
           <h2><span class="live-dot"></span>${greet}، ${company.name || "مرحباً"}</h2>
@@ -344,4 +366,10 @@
   }
 
   render();
+  page.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "ob-off") {
+      try { localStorage.setItem("rasied_ob_off", "1"); } catch (x) {}
+      var c = document.getElementById("ob-card"); if (c) c.remove();
+    }
+  });
 })();

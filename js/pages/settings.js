@@ -70,6 +70,23 @@
       </div>
 
       <div class="card stack">
+        <h3 style="margin-top:0">نسخة احتياطية</h3>
+        <p class="muted" style="margin:0;font-size:13px;line-height:1.8">تنزيل كل بيانات شركتك (العملاء، الموردين، الأصناف، الفواتير، السندات، القيود...) في ملف واحد تحتفظ به عندك. ننصح بأخذ نسخة أسبوعيًا.</p>
+        <div><button type="button" class="primary" id="backup-btn">تنزيل نسخة احتياطية كاملة</button> <span class="muted" id="backup-msg" style="font-size:12px"></span></div>
+      </div>
+
+      <div class="card stack">
+        <h3 style="margin-top:0">استعادة نسخة احتياطية</h3>
+        <p class="muted" style="margin:0;font-size:13px;line-height:1.8">
+          <b>شركة جديدة أو فارغة (بدون أي مستندات):</b> استرجاع كامل لكل البيانات والأرصدة كما كانت وقت النسخة.<br>
+          <b>شركة تعمل بالفعل:</b> يُسترجع فقط ما حُذف من العملاء والموردين والأصناف والمجموعات والمخازن ودليل الحسابات، ولا يُمَس أي مستند أو رصيد موجود.
+          يُنزَّل تلقائيًا نسخة من وضعك الحالي قبل أي استعادة.
+        </p>
+        <div><button type="button" id="restore-btn">اختيار ملف نسخة احتياطية...</button> <span class="muted" id="restore-msg" style="font-size:12px"></span>
+          <input type="file" id="restore-file" accept=".json,application/json" style="display:none"></div>
+      </div>
+
+      <div class="card stack">
         <h3 style="margin-top:0">الاستضافة والربط</h3>
         <ol style="margin:0;padding-inline-start:20px;line-height:1.8" class="muted">
           <li>ارفع مجلد trading-system على Cloudflare Pages (مجاني).</li>
@@ -121,6 +138,127 @@
     DB.resetDemo();
     UI.toast("تمت إعادة الضبط");
     setTimeout(function () { location.reload(); }, 600);
+  };
+  var BK_TABLES = ["accounts", "attendance", "bank_movements", "banks", "cash_counts", "cash_movements", "cash_registers", "cheques", "customers", "customer_groups",
+    "employees", "expenses", "journal_entries", "journal_lines", "party_txns", "payments", "payroll_lines", "payroll_runs", "products", "product_groups",
+    "purchase_lines", "purchase_return_lines", "purchase_returns", "purchases", "quotes", "visit_reports", "sale_lines", "sale_return_lines", "sale_returns", "sales",
+    "activity_log", "price_lists", "price_list_items", "installment_plans", "installments", "stock_transfer_lines", "stock_transfers", "stocktake_lines", "stocktakes", "suppliers", "supplier_groups", "treasury_tabs", "warehouses"];
+  // مستندات/حركات: وجود أي منها يعني أن الشركة تعمل (فلا استرجاع كامل)
+  var BK_DOCS = ["sales", "purchases", "sale_returns", "purchase_returns", "payments", "journal_entries", "cash_movements", "bank_movements", "cheques", "expenses", "party_txns", "stock_transfers", "stocktakes", "installment_plans", "installments"];
+  // بيانات أساسية لا تحمل أرصدة مستقلة عن المستندات (تُسترجع في الشركة العاملة)
+  var BK_MASTERS = ["customers", "suppliers", "products", "warehouses", "accounts", "customer_groups", "supplier_groups", "product_groups", "price_lists", "price_list_items"];
+
+  async function exportBackup(download) {
+    DB.refresh();
+    var out = { app: "rasied", version: 1, exported_at: new Date().toISOString(), company: DB.getCompany(), tables: {} }, total = 0;
+    for (var i = 0; i < BK_TABLES.length; i++) {
+      var rows = [];
+      try { rows = (await DB.list(BK_TABLES[i])) || []; } catch (e) { rows = []; }
+      if (rows.length) { out.tables[BK_TABLES[i]] = rows; total += rows.length; }
+    }
+    if (download) {
+      var blob = new Blob([JSON.stringify(out)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (download === "pre" ? "rasied-before-restore-" : "rasied-backup-") + new Date().toISOString().slice(0, 10) + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    }
+    return { out: out, total: total };
+  }
+
+  var bkBtn = document.getElementById("backup-btn");
+  if (bkBtn) bkBtn.onclick = async function () {
+    var msg = document.getElementById("backup-msg");
+    bkBtn.disabled = true; msg.textContent = "جارٍ التجهيز...";
+    try {
+      var r = await exportBackup(true);
+      msg.textContent = "تم تنزيل " + r.total + " سجل";
+      UI.toast("تم تنزيل النسخة الاحتياطية");
+    } catch (err) { UI.toast(err.message, true); msg.textContent = ""; }
+    bkBtn.disabled = false;
+  };
+
+  /* ---------- الاستعادة ---------- */
+  function readFileText(file) {
+    if (file.text) return file.text();
+    return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.onerror = function () { rej(new Error("تعذّرت قراءة الملف")); }; fr.readAsText(file); });
+  }
+  function validate(j) {
+    if (!j || j.app !== "rasied" || !j.tables || typeof j.tables !== "object") throw new Error("هذا ليس ملف نسخة احتياطية من رصيد");
+    var tabs = {}, total = 0;
+    Object.keys(j.tables).forEach(function (t) {
+      if (BK_TABLES.indexOf(t) === -1) return;                       // جداول غير معروفة تُتجاهل
+      var rows = j.tables[t];
+      if (!Array.isArray(rows)) return;
+      rows = rows.filter(function (r) { return r && typeof r === "object" && !Array.isArray(r) && typeof r.id === "string" && r.id && r.id.length <= 100; });
+      if (rows.length) { tabs[t] = rows; total += rows.length; }
+    });
+    if (!total) throw new Error("الملف لا يحتوي بيانات صالحة");
+    return { tabs: tabs, total: total };
+  }
+
+  var rsBtn = document.getElementById("restore-btn"), rsFile = document.getElementById("restore-file"), rsMsg = document.getElementById("restore-msg");
+  if (rsBtn) rsBtn.onclick = function () { if (DB.me().owner) rsFile.click(); else UI.toast("الاستعادة لمالك الشركة فقط", true); };
+  if (rsFile) rsFile.onchange = async function () {
+    var file = rsFile.files && rsFile.files[0]; rsFile.value = "";
+    if (!file) return;
+    try {
+      if (file.size > 60 * 1024 * 1024) throw new Error("الملف كبير جدًا");
+      var j = JSON.parse(await readFileText(file)), v = validate(j);
+      DB.refresh();
+      // حالة الشركة الحالية
+      var cur = {}, hasDocs = false;
+      for (var i = 0; i < BK_TABLES.length; i++) { var t = BK_TABLES[i]; try { cur[t] = (await DB.list(t)) || []; } catch (e) { cur[t] = []; } }
+      BK_DOCS.forEach(function (t) { if (cur[t].length) hasDocs = true; });
+      var resume = false; try { resume = localStorage.getItem("rasied_restore_inprogress") === String(j.exported_at); } catch (e) {}
+      var full = !hasDocs || resume;
+      var tables = full ? Object.keys(v.tabs) : Object.keys(v.tabs).filter(function (t) { return BK_MASTERS.indexOf(t) !== -1; });
+      var plan = {}, planTotal = 0;
+      tables.forEach(function (t) {
+        var have = {}; cur[t].forEach(function (r) { have[r.id] = 1; });
+        var miss = v.tabs[t].filter(function (r) { return !have[r.id]; });
+        if (miss.length) { plan[t] = miss; planTotal += miss.length; }
+      });
+      if (!planTotal) { UI.toast(full ? "لا يوجد جديد للاستعادة — كل بيانات الملف موجودة بالفعل" : "لا توجد بيانات أساسية محذوفة لاستعادتها", true); return; }
+      var curName = (DB.getCompany() || {}).name || "", fileName = (j.company && j.company.name) || "";
+      var other = fileName && curName && fileName !== curName;
+      var ov = document.createElement("div"); ov.className = "modal-overlay";
+      ov.innerHTML = '<div class="modal card" style="max-width:560px"><h3 style="margin-top:0">' + (full ? "استرجاع كامل" : "استرجاع البيانات الأساسية المحذوفة") + '</h3>' +
+        '<div class="stack" style="gap:8px;font-size:14px"><div>النسخة بتاريخ <b dir="ltr">' + Ledger.esc(String(j.exported_at || "").slice(0, 16).replace("T", " ")) + "</b>" + (fileName ? " — شركة: <b>" + Ledger.esc(fileName) + "</b>" : "") + "</div>" +
+        (other ? '<div class="card error" style="padding:8px">تنبيه: اسم الشركة في الملف مختلف عن شركتك الحالية (' + Ledger.esc(curName) + ").</div>" : "") +
+        "<div>سيُضاف <b>" + planTotal + "</b> سجل غير موجود حاليًا:</div><div class=\"muted\" style=\"font-size:13px\">" + Object.keys(plan).map(function (t) { return Ledger.esc(t) + ": " + plan[t].length; }).join(" · ") + "</div>" +
+        (full ? "<div class=\"muted\" style=\"font-size:13px\">الشركة بلا مستندات حاليًا، فسيُسترجع كل شيء بأرصدته كما في النسخة.</div>"
+              : "<div class=\"muted\" style=\"font-size:13px\">الشركة تعمل بالفعل: لن تُسترجع المستندات ولا الخزائن ولا البنوك. أرصدة العملاء/الموردين المسترجعين تُعاد من حركاتهم الحالية، وراجع كميات الأصناف المسترجعة.</div>") +
+        '<div class="muted" style="font-size:13px">سيُنزَّل تلقائيًا نسخة من وضعك الحالي أولًا.</div></div>' +
+        '<div class="row gap" style="justify-content:flex-end;margin-top:12px"><button type="button" class="ghost" id="rs-cancel">إلغاء</button><button type="button" class="primary" id="rs-go">ابدأ الاستعادة</button></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#rs-cancel").onclick = function () { ov.remove(); };
+      ov.querySelector("#rs-go").onclick = async function () {
+        var go = ov.querySelector("#rs-go"); go.disabled = true;
+        try {
+          go.textContent = "جارٍ حفظ نسخة من وضعك الحالي...";
+          await exportBackup("pre");
+          if (full) { try { localStorage.setItem("rasied_restore_inprogress", String(j.exported_at)); } catch (e) {} }
+          var done = 0;
+          for (var ti = 0; ti < Object.keys(plan).length; ti++) {
+            var tb = Object.keys(plan)[ti], rows = plan[tb];
+            for (var k = 0; k < rows.length; k += 200) {
+              await DB.insertRows(rows.slice(k, k + 200).map(function (r) { return { table: tb, row: r }; }));
+              done += Math.min(200, rows.length - k); go.textContent = "جارٍ الاستعادة... " + done + " / " + planTotal;
+            }
+          }
+          if (!full) {
+            // أرصدة الأطراف المسترجعة تُشتق من حركاتها الحالية
+            var kinds = [["customers", "customer"], ["suppliers", "supplier"]];
+            for (var ki = 0; ki < kinds.length; ki++) { var list = plan[kinds[ki][0]] || []; for (var q = 0; q < list.length; q++) { try { await Ledger.recompute(kinds[ki][1], list[q].id); } catch (e) {} } }
+          }
+          try { localStorage.removeItem("rasied_restore_inprogress"); } catch (e) {}
+          DB.refresh(); ov.remove();
+          UI.toast("تمت الاستعادة: " + planTotal + " سجل"); rsMsg.textContent = "تمت استعادة " + planTotal + " سجل";
+        } catch (err) { UI.toast("توقفت الاستعادة: " + err.message + " — أعد المحاولة بنفس الملف لإكمالها", true); go.disabled = false; go.textContent = "ابدأ الاستعادة"; }
+      };
+    } catch (err) { UI.toast(err.message, true); }
   };
   (function () {
     var el = document.getElementById("density"); if (!el) return;

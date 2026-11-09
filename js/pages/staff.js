@@ -5,7 +5,7 @@
   var staff = [];
 
   var GROUPS = [
-    ["المبيعات", [["sales", "فواتير البيع"], ["returns", "مردودات البيع"], ["customers", "العملاء"], ["quotes", "عروض الأسعار"], ["field-reports", "تقارير الزيارات والمكالمات"], ["sales-sheet", "كشف المبيعات"]]],
+    ["المبيعات", [["sales", "فواتير البيع"], ["returns", "مردودات البيع"], ["customers", "العملاء"], ["quotes", "عروض الأسعار"], ["aging", "أعمار الديون والتحصيل"], ["price-lists", "قوائم الأسعار"], ["installments", "أقساط العملاء"], ["field-reports", "تقارير الزيارات والمكالمات"], ["sales-sheet", "كشف المبيعات"]]],
     ["المشتريات", [["purchases", "فواتير الشراء"], ["purchase-returns", "مردودات الشراء"], ["suppliers", "الموردين"]]],
     ["المخزون", [["products", "الأصناف"], ["warehouses", "المخازن"], ["stocktake", "الجرد"], ["transfers", "تحويلات المخازن"]]],
     ["الخزائن والبنوك", [["cash-registers", "الخزائن"], ["banks", "البنوك"], ["cheques", "الشيكات"], ["payments", "سندات قبض/صرف"]]],
@@ -13,7 +13,7 @@
     ["الموارد البشرية", [["employees", "الموظفين"], ["attendance", "الحضور والانصراف"], ["payroll", "المرتبات"]]],
   ];
   var PRESETS = {
-    "مبيعات": ["sales", "returns", "customers", "products", "statements", "quotes", "field-reports"],
+    "مبيعات": ["sales", "returns", "customers", "products", "statements", "quotes", "field-reports", "aging"],
     "مندوب ميداني": ["field-reports", "customers", "quotes", "products"],
     "أمين مخزن": ["products", "warehouses", "stocktake", "transfers", "purchases", "suppliers"],
     "محاسب": ["trial-balance", "ledger", "financials", "vat-report", "sales", "returns", "customers", "purchases", "purchase-returns", "suppliers", "cash-registers", "banks", "cheques", "payments", "statements", "party-trial", "accounts", "journal", "expenses", "reports", "sales-sheet", "daily-report"],
