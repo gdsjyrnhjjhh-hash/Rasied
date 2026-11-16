@@ -116,10 +116,14 @@
     }
     function pick(i) { if (cur[i]) { box.classList.remove("open"); onPick(cur[i]); } }
     input.addEventListener("input", function () { hl = -1; draw(); });
-    input.addEventListener("focus", function () { hl = -1; draw(); });
+    /* القائمة لا تُفتح بمجرد التركيز (focus) لأن الصفحة تنقل التركيز برمجيًا؛ تُفتح بالضغط على الحقل أو بالكتابة أو بسهم لأسفل */
+    input.addEventListener("click", function () { if (!box.classList.contains("open")) { hl = -1; draw(); } });
     input.addEventListener("blur", function () { setTimeout(function () { box.classList.remove("open"); }, 150); });
     input.addEventListener("keydown", function (e) {
-      if (!box.classList.contains("open")) return;
+      if (!box.classList.contains("open")) {
+        if (e.key === "ArrowDown") { e.preventDefault(); hl = -1; draw(); }
+        return;
+      }
       if (e.key === "ArrowDown") { e.preventDefault(); hl = Math.min(hl + 1, cur.length - 1); draw(); }
       else if (e.key === "ArrowUp") { e.preventDefault(); hl = Math.max(hl - 1, 0); draw(); }
       else if (e.key === "Enter" && cur.length) { e.preventDefault(); pick(hl >= 0 ? hl : 0); }

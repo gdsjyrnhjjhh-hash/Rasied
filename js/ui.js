@@ -114,9 +114,41 @@
     download: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>'),
     admin: svg('<path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/>'),
     logout: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>'),
+    chev: svg('<path d="m6 9 6 6 6-6"/>'),
     receipt: svg('<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2z"/><path d="M8 8h8M8 12h8"/>'),
   };
   var NAV_ICONS = ICON;
+  var GROUP_ICONS = {
+    "المبيعات": ICON.sales, "المشتريات": ICON.purchases, "المخزون والخزائن": ICON.warehouses,
+    "الموارد البشرية": ICON.employees, "المحاسبة": ICON.accounts, "التقارير": ICON.reports,
+    "النظام": ICON.settings, "الإدارة": ICON.admin
+  };
+  /* القائمة الجانبية: مجموعات قابلة للطيّ (أكورديون) — مجموعة واحدة مفتوحة، وتُفتح تلقائيًا مجموعة الصفحة الحالية */
+  var NAVOPEN_KEY = "trading_nav_open", navOpen = null, navSeeded = false;
+  try { navOpen = localStorage.getItem(NAVOPEN_KEY) || null; } catch (e) {}
+  function groupOfKey(ctx, key) {
+    var r = null;
+    ctx.navx.forEach(function (g) { if (g.items.length > 1) g.items.forEach(function (l) { if (l.key === key) r = g.group; }); });
+    return r;
+  }
+  function syncNavOpen(nav) {
+    if (!nav) return;
+    nav.querySelectorAll(".nav-sec").forEach(function (sec) {
+      var on = sec.getAttribute("data-grp") === navOpen;
+      sec.classList.toggle("open", on);
+      var b = sec.querySelector(".nav-group"); if (b) b.setAttribute("aria-expanded", on ? "true" : "false");
+    });
+  }
+  function setNavOpen(g) {
+    navOpen = g;
+    try { if (g) localStorage.setItem(NAVOPEN_KEY, g); else localStorage.removeItem(NAVOPEN_KEY); } catch (e) {}
+    syncNavOpen(document.getElementById("sidebar-nav"));
+  }
+  function openGroupOfActive() {
+    var nav = document.getElementById("sidebar-nav"); if (!nav) return;
+    var a = nav.querySelector("a.nav.active"), sec = a && a.closest(".nav-sec");
+    if (sec) setNavOpen(sec.getAttribute("data-grp"));
+  }
 
   var NAV = [
     { group: "الرئيسية", items: [{ key: "dashboard", href: "index.html", label: "لوحة التحكم" }] },
@@ -428,13 +460,23 @@
       for (var i = 0; i < 9; i++) sk += '<div class="skel nav-skel"></div>';
       return sk;
     }
-    return ctx.navx.map(function (g) {
-      return html`<div class="nav-group"><span>${g.group}</span></div>${g.items.map(function (l) {
-        var ic = NAV_ICONS[l.key] || "•";
-        return html`<a class="nav ${l.key === active ? "active" : ""}" href="${l.href}" data-nav="${l.key}" data-label="${l.label}"${l.key === active ? ' aria-current="page"' : ""}>
+    var activeG = groupOfKey(ctx, active);
+    if (!navSeeded) { navSeeded = true; if (activeG) navOpen = activeG; }
+    function link(l) {
+      var ic = NAV_ICONS[l.key] || "•";
+      return html`<a class="nav ${l.key === active ? "active" : ""}" href="${l.href}" data-nav="${l.key}" data-label="${l.label}"${l.key === active ? ' aria-current="page"' : ""}>
           <span class="nav-ic">${ic}</span><span class="nav-label">${l.label}</span>
         </a>`;
-      }).join("")}`;
+    }
+    return ctx.navx.map(function (g) {
+      if (g.items.length === 1) return link(g.items[0]);   // مجموعة بعنصر واحد: رابط مباشر بدون طيّ
+      var open = g.group === navOpen;
+      return html`<div class="nav-sec${open ? " open" : ""}" data-grp="${g.group}">
+        <button type="button" class="nav-group" aria-expanded="${open ? "true" : "false"}">
+          <span class="nav-ic">${GROUP_ICONS[g.group] || "•"}</span><span class="nav-glabel">${g.group}</span><span class="nav-chev">${ICON.chev}</span>
+        </button>
+        <div class="nav-sub"><div class="nav-sub-in">${g.items.map(link).join("")}</div></div>
+      </div>`;
     }).join("");
   }
 
@@ -488,7 +530,7 @@
       nav.scrollTop = parseInt(saved, 10) || 0;
     } else {
       var act = nav.querySelector("a.nav.active");
-      if (act) nav.scrollTop = Math.max(0, act.offsetTop - nav.clientHeight / 2);
+      if (act) { var ar = act.getBoundingClientRect(), nr = nav.getBoundingClientRect(); nav.scrollTop = Math.max(0, nav.scrollTop + (ar.top - nr.top) - nav.clientHeight / 2); }
     }
   }
 
@@ -724,6 +766,7 @@
         if (on) a.setAttribute("aria-current", "page");
         else a.removeAttribute("aria-current");
       });
+      openGroupOfActive();
     }
   }
 
@@ -874,20 +917,25 @@
 
     // بحث القائمة الجانبية
     var ms = document.getElementById("menu-search");
+    var navEl = document.getElementById("sidebar-nav");
+    if (navEl) {
+      navEl.addEventListener("click", function (e) {
+        var b = e.target.closest(".nav-group"); if (!b) return;
+        var sec = b.closest(".nav-sec"), g = sec && sec.getAttribute("data-grp");
+        setNavOpen(sec.classList.contains("open") ? null : g);
+      });
+    }
     if (ms) {
       ms.addEventListener("input", function () {
         var q = ms.value.trim().toLowerCase();
-        var app = document.getElementById("app");
-        app.querySelectorAll(".sidebar a.nav").forEach(function (a) {
+        var nv = document.getElementById("sidebar-nav");
+        nv.classList.toggle("searching", !!q);
+        nv.querySelectorAll("a.nav").forEach(function (a) {
           a.style.display = !q || a.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
         });
-        app.querySelectorAll(".sidebar .nav-group").forEach(function (g) {
-          var next = g.nextElementSibling, any = false;
-          while (next && next.classList.contains("nav")) {
-            if (next.style.display !== "none") any = true;
-            next = next.nextElementSibling;
-          }
-          g.style.display = any || !q ? "" : "none";
+        nv.querySelectorAll(".nav-sec").forEach(function (sec) {
+          var any = Array.prototype.some.call(sec.querySelectorAll("a.nav"), function (a) { return a.style.display !== "none"; });
+          sec.style.display = any || !q ? "" : "none";
         });
       });
     }
@@ -1065,6 +1113,7 @@
           a.classList.toggle("active", on);
           if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
         });
+        openGroupOfActive();
       }
     }
     if (opts && opts.title) setPageTitle(opts.title);
