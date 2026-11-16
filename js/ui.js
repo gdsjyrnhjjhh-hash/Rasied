@@ -96,6 +96,7 @@
     settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
     building: svg('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>'),
     search: svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'),
+    bell: svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
     moon: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
     sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
     menu: svg('<path d="M3 6h18M3 12h18M3 18h18"/>'),
@@ -374,6 +375,8 @@
     if (!w) toast("اسمح بالنوافذ المنبثقة لفتح واتساب", true);
     else if (!waPhone(phone)) toast("لا يوجد رقم هاتف للعميل — اختر جهة الاتصال داخل واتساب");
   }
+  // رقم الإصدار المعروض في تذييل القائمة: يُؤخذ من ?v= في وسم ui.js (مصدر واحد مع كاش-باستر الملفات)
+  var APP_VER = (function () { try { var m = document.querySelector('script[src*="js/ui.js"]'); var v = m && /[?&]v=(\d+)/.exec(m.src); return v ? v[1] : ""; } catch (e) { return ""; } })();
   // رقم الإصدار (?v=…) من وسم ui.js نفسه — لتجنّب كاش قديم عند تحميل ملفات ديناميكيًا
   function verQ() {
     var me = document.querySelector('script[src*="js/ui.js"]');
@@ -526,7 +529,7 @@
           </div>
           <nav class="sidebar-nav" id="sidebar-nav">${navHtmlFor(ctx, active)}</nav>
           <div class="sidebar-foot">
-            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار 24</div>
+            <div class="sidebar-ver"><b>نظام ERP</b>الإصدار ${APP_VER}</div>
             <button type="button" class="collapse-btn" data-action="toggle-collapse" title="طيّ القائمة" aria-label="طيّ القائمة">${ICON.chevron}</button>
           </div>
         </aside>
@@ -542,6 +545,7 @@
               <button type="button" class="top-search" data-action="focus-search" title="بحث (Ctrl+K)">${ICON.search}<span>ابحث أو انتقل إلى…</span><span class="kbd">Ctrl K</span></button>
               <button type="button" class="ghost install-btn" data-action="install-app" id="install-btn" title="تثبيت التطبيق على جهازك" aria-label="تثبيت التطبيق" hidden>${ICON.download}</button>
               <button type="button" class="ghost lang-btn" data-action="toggle-lang" title="English / عربي" id="lang-btn">${window.I18n && I18n.isEn() ? "عربي" : "EN"}</button>
+              <div class="alerts-wrap"><button type="button" class="ghost bell-btn" id="bell-btn" data-action="toggle-alerts" title="التنبيهات" aria-label="التنبيهات" hidden>${ICON.bell}<span class="bell-badge" id="bell-badge" hidden></span></button><div class="alerts-panel" id="alerts-panel" hidden></div></div>
               <button type="button" class="ghost theme-btn" data-action="toggle-theme" title="ثيم داكن/فاتح" id="theme-btn">${ICON.moon}</button>
               <div class="quick-wrap">
                 <button type="button" class="primary small" data-action="toggle-quick">${ICON.plus}<span>إجراء سريع</span></button>
@@ -981,6 +985,8 @@
         if (window.PWA) PWA.install();
       } else if (act === "logout") {
         DB.logout();
+      } else if (act === "toggle-alerts") {
+        if (window.Alerts) Alerts.toggle();
       } else if (act === "toggle-quick") {
         var menu = document.getElementById("quick-menu");
         menu.hidden = !menu.hidden;
@@ -1106,6 +1112,11 @@
     }
     // الهيكل العظمي يبقى حتى تكتب الصفحة محتواها؛ ثم يظهر المحتوى بتلاشٍ هادئ
     pageEl.classList.add("anim-stagger");
+    // مركز التنبيهات (جرس + إشعارات الجهاز) — يُحمَّل مرة واحدة لحساب الشركة
+    if (!ctx.isAdmin && !ctx.pending && !window.__alertsBoot) {
+      window.__alertsBoot = true;
+      need("js/alerts.js", "Alerts").then(function () { Alerts.init(ctx); }).catch(function () {});
+    }
     return pageEl;
   }
 

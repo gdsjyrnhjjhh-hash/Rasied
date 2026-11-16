@@ -163,6 +163,7 @@
       a.download = (download === "pre" ? "rasied-before-restore-" : "rasied-backup-") + new Date().toISOString().slice(0, 10) + ".json";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      if (download === true) { try { localStorage.setItem("rasied_last_backup_" + (DB.me().id || "demo"), new Date().toISOString().slice(0, 10)); } catch (e) {} }
     }
     return { out: out, total: total };
   }

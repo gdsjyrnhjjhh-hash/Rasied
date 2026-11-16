@@ -708,7 +708,6 @@ body { overflow-x: hidden; }
   }
   #lines > .form-grid .field:first-child { grid-column: 1 / -1; }
 
-  .inv-layout { grid-template-columns: 1fr; }
   .top-panel .top-row { gap: 8px; }
   .top-panel .chips { margin-inline-start: 0; width: 100%; }
   .chip { min-width: 0; flex: 1 1 40%; }
@@ -865,7 +864,7 @@ body { overflow-x: hidden; }
 @media (max-width: 700px) { .day-grid { grid-template-columns: repeat(15, 1fr); } }
 
 /* ==========================================================================
-   18) صفحة إدخال الفاتورة / المرتجع (لوحتان + شريط الإجماليات)
+   18) صفحة إدخال الفاتورة / المرتجع (شاشة عمل مضغوطة: رأس + سطر إضافة + جدول + دفع + شريط)
    ========================================================================== */
 .inv-page { --inv-accent: var(--primary); }
 .inv-page[data-kind="purchase"] { --primary: #0e8a7c; --primary-hover: #0a6f64; --primary-soft: #e2f6f3; --primary-muted: #a7e0d8; --primary-glow: rgba(14,138,124,.30); }
@@ -873,21 +872,8 @@ body { overflow-x: hidden; }
 html.dark .inv-page[data-kind="purchase"] { --primary-soft: rgba(14,138,124,.18); --primary-muted: rgba(14,138,124,.45); }
 html.dark .inv-page[data-kind="sale_return"], html.dark .inv-page[data-kind="purchase_return"] { --primary-soft: rgba(209,42,63,.18); --primary-muted: rgba(209,42,63,.45); }
 
-.inv-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
-.inv-head h2 { margin: 0; display: flex; align-items: center; gap: 10px; }
 .kind-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--primary-soft); color: var(--primary); border: 1px solid var(--primary-muted); }
 
-.inv-layout { display: grid; grid-template-columns: minmax(340px, 440px) 1fr; gap: 16px; align-items: start; }
-.inv-panel { display: flex; flex-direction: column; gap: 14px; }
-.inv-card { position: relative; border-top: 3px solid var(--primary); }
-.inv-sec { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; margin: 0 0 14px; color: var(--text); }
-.inv-sec::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.inv-sec.alt { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border-strong); }
-.inv-card .form-grid { gap: 10px 12px; }
-.inv-card .field.half { grid-column: span 1; }
-.inv-card .field.full { grid-column: 1 / -1; }
-.inv-card label .opt { font-weight: 400; color: var(--faint); font-size: 11px; margin-inline-start: 4px; }
-.inv-card .auto-badge { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); margin-inline-start: 6px; }
 
 .sugg-wrap { position: relative; }
 .sugg { position: absolute; z-index: 30; inset-inline: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow-lg); display: none; padding: 4px; }
@@ -904,27 +890,9 @@ html.dark .inv-page[data-kind="sale_return"], html.dark .inv-page[data-kind="pur
 .stock-pill.low { background: var(--warning-soft); color: var(--warning); }
 .stock-pill.zero { background: var(--error-soft); color: var(--error); }
 
-.inv-actions-row { display: flex; gap: 8px; margin-top: 14px; }
-.inv-actions-row button { flex: 1; justify-content: center; }
 
-.inv-items { padding: 0; overflow: hidden; }
-.inv-items .panel-title { padding: 16px 20px 0; }
 .count-badge { font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); }
-.inv-items .table-scroll { max-height: calc(100vh - 430px); min-height: 220px; overflow: auto; }
-.inv-items td .note { display: block; font-size: 11.5px; color: var(--muted); }
-.inv-items tr.editing td { background: var(--primary-soft); }
-.inv-empty { padding: 42px 16px; text-align: center; color: var(--muted); }
-.inv-empty b { display: block; color: var(--text-2); margin-bottom: 4px; }
 
-.inv-bar { position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); }
-.inv-totals { display: flex; gap: 8px; flex-wrap: wrap; }
-.inv-tot { min-width: 96px; padding: 8px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
-.inv-tot .l { font-size: 11px; color: var(--muted); font-weight: 600; }
-.inv-tot .v { font-size: 16px; font-weight: 700; margin-top: 1px; }
-.inv-tot.red .v { color: var(--error); }
-.inv-tot.net { background: var(--primary); border-color: var(--primary); }
-.inv-tot.net .l, .inv-tot.net .v { color: #fff; }
-.inv-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .preview-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(10,16,38,.6); backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; padding: 24px 12px; overflow: auto; }
 .preview-sheet { background: #fff; color: #0e1630; width: min(820px, 100%); border-radius: 14px; padding: 32px; box-shadow: var(--shadow-lg); line-height: 1.7; }
@@ -937,10 +905,6 @@ html.dark .inv-page[data-kind="sale_return"], html.dark .inv-page[data-kind="pur
 .preview-sheet table.totals { width: 300px; margin: 18px auto 0 0; }
 .preview-actions { display: flex; gap: 10px; margin-top: 16px; }
 
-@media (max-width: 980px) {
-  .inv-layout { grid-template-columns: 1fr; }
-  .inv-items .table-scroll { max-height: none; }
-}
 
 /* ===== 19) الخزينة (نمط ROLLEX) ===== */
 .top-panel{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
@@ -1097,3 +1061,143 @@ html.dark mark{background:#854d0e}
 .auth-brand b { font-size: 20px; }
 
 /* v40 — تصغير صفحة إدارة المستخدمين صار بمقاسات صريحة داخل admin.js (لا zoom: يعطّل القوائم المنسدلة) */
+
+/* ---------- مركز التنبيهات ---------- */
+.alerts-wrap { position: relative; }
+.bell-btn { position: relative; }
+.bell-badge { position: absolute; top: -4px; inset-inline-end: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--surface); }
+.bell-badge[hidden] { display: none; }
+.alerts-panel { position: absolute; inset-inline-end: 0; top: calc(100% + 10px); width: 380px; max-width: 92vw; max-height: 70vh; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); z-index: 60; animation: pop .18s var(--ease); }
+.alerts-panel[hidden] { display: none; }
+.al-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
+.al-tools { display: flex; gap: 6px; }
+.al-list { display: flex; flex-direction: column; }
+.al-item { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+.al-item:hover { background: var(--primary-soft); }
+.al-item.read { opacity: .55; }
+.al-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; background: var(--text-3, #94a3b8); }
+.al-danger .al-dot { background: #dc2626; } .al-warn .al-dot { background: #f59e0b; } .al-info .al-dot { background: #3b82f6; }
+.al-txt { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; }
+.al-txt b { font-size: 13.5px; } .al-txt span { color: var(--text-2); overflow-wrap: anywhere; }
+.al-empty { padding: 28px 16px; text-align: center; font-size: 14px; }
+.al-set { padding: 12px 14px; } .al-opt { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 13.5px; cursor: pointer; }
+.al-os { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: var(--primary-soft); font-size: 12.5px; }
+.al-hint { padding: 10px 14px; margin: 0; font-size: 12px; background: var(--primary-soft); }
+@media (max-width: 640px) { .alerts-panel { position: fixed; inset-inline: 8px; top: 64px; width: auto; max-width: none; } }
+
+/* ==========================================================================
+   18-ب) شاشة الفاتورة المضغوطة (iv-*) — تتسع في الشاشة والجدول وحده يتمرر
+   ========================================================================== */
+.iv-root { container-type: inline-size; }
+.iv { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.iv.fixed { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+.iv-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow-sm, 0 1px 2px rgba(15,23,42,.05)); }
+.iv-head { border-top: 3px solid var(--primary); }
+.iv .f { min-width: 0; position: relative; }
+.iv label { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 16px; margin: 0 0 3px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.iv label .opt { font-weight: 400; color: var(--faint); font-size: 10.5px; }
+.iv label .auto { font-size: 10px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); }
+.iv input, .iv select { width: 100%; height: 34px; min-height: 34px; padding: 0 10px; font-size: 13px; border-radius: 9px; box-sizing: border-box; }
+.iv input[type="date"] { padding-inline: 8px; }
+.iv select { padding-inline-end: 26px; text-overflow: ellipsis; }
+.iv-tbl td select { padding-inline: 4px 22px; text-align: right; text-align-last: right; }
+.iv button { height: 34px; min-height: 34px; padding: 0 14px; font-size: 13px; border-radius: 9px; white-space: nowrap; }
+.iv .iv-row { display: flex; gap: 6px; }
+.iv .iv-row .primary { flex: 1; }
+.iv .iv-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-2); box-shadow: none; }
+.iv .iv-ghost:hover { background: var(--primary-soft); color: var(--primary); }
+.iv .iv-sq { width: 30px; min-width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.iv .iv-sq.danger:hover { background: var(--error-soft); color: var(--error); border-color: var(--error); }
+.iv .iv-link { height: auto; min-height: 0; padding: 0 2px; border: 0; background: none; box-shadow: none; color: var(--primary); font-size: 11.5px; font-weight: 700; }
+
+/* رأس الفاتورة: صف واحد */
+.iv-grid { display: grid; gap: 8px 10px; align-items: end; grid-template-columns: 92px 150px minmax(200px, 1.7fr) minmax(130px, .8fr) minmax(110px, .6fr) auto; }
+.iv-grid:not(:has(.f-rep)) { grid-template-columns: 92px 150px minmax(200px, 1.7fr) minmax(110px, .6fr) auto; }
+.iv-more { display: grid; grid-template-columns: minmax(160px, .5fr) 1fr; gap: 8px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-strong); }
+.iv-more[hidden] { display: none; }
+.iv .party-note { margin-top: 6px; }
+.iv .party-note:empty { display: none; }
+
+/* سطر إضافة المنتج */
+.iv-egrid { display: grid; gap: 8px 10px; align-items: end; grid-template-columns: minmax(180px, 1fr) 86px 104px 98px minmax(110px, .5fr) 118px; }
+.iv .stock-pill { font-size: 11px; padding: 0 8px; }
+
+/* جدول البنود */
+.iv-items { padding: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.iv-ihead { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.iv-ihead b { font-size: 13px; }
+.iv-hint { margin-inline-start: auto; font-size: 11px; color: var(--faint); }
+.iv-tablewrap { flex: 1; min-height: 110px; overflow: auto; }
+.iv-tbl { width: 100%; min-width: 0 !important; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.iv-tbl td input, .iv-tbl td select { min-width: 0; }
+.iv-tbl .c-name { overflow-wrap: anywhere; }
+.iv-tbl th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); padding: 6px 8px; text-align: right; font-size: 11.5px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.iv-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.iv-tbl tbody tr:hover td { background: var(--primary-soft); }
+.iv-tbl .c-idx { width: 34px; color: var(--faint); }
+.iv-tbl .c-name b { font-weight: 700; }
+.iv-tbl .c-name .note { display: block; font-size: 11.5px; color: var(--muted); }
+.iv-tbl .c-qty, .iv-tbl .c-price { width: 96px; }
+.iv-tbl .c-unit { width: 92px; }
+.iv-tbl .c-tot { width: 110px; font-weight: 700; white-space: nowrap; }
+.iv-tbl .c-act { width: 72px; white-space: nowrap; }
+.iv-tbl td input, .iv-tbl td select { height: 28px; min-height: 28px; padding: 0 6px; font-size: 13px; text-align: center; }
+.iv-tbl .c-act button { height: 28px; min-height: 28px; width: 28px; min-width: 28px; margin-inline-end: 3px; }
+.iv-tbl tr.note-row td { padding: 2px 8px 8px; background: var(--primary-soft); }
+.iv-tbl tr.note-row input { text-align: right; }
+.iv-empty { padding: 26px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
+.iv-empty b { display: block; color: var(--text-2); margin-bottom: 2px; font-size: 13.5px; }
+
+/* الدفع والخصم */
+.iv-pgrid { display: grid; gap: 8px 10px; align-items: end; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* شريط الإجماليات والأزرار */
+.iv-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; box-shadow: var(--shadow-lg); }
+.iv-tots { display: flex; gap: 6px; flex-wrap: wrap; }
+.iv-t { display: flex; flex-direction: column; min-width: 72px; padding: 3px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); line-height: 1.35; }
+.iv-t .l { font-size: 10.5px; font-weight: 600; color: var(--muted); }
+.iv-t .v { font-size: 14.5px; font-weight: 800; }
+.iv-t.red .v { color: var(--error); }
+.iv-t.net { background: var(--primary); border-color: var(--primary); }
+.iv-t.net .l, .iv-t.net .v { color: #fff; }
+.iv-acts { display: flex; gap: 6px; align-items: center; position: relative; }
+.iv-acts2 { display: flex; gap: 6px; }
+.iv .iv-save { min-width: 124px; font-weight: 800; }
+.iv-acts2 button { padding: 0 11px; }
+.iv .iv-menu { display: none; width: 34px; padding: 0; }
+
+/* حاوية متوسطة (تابلت / نافذة متوسطة) */
+@container (max-width: 980px) {
+  .iv-grid, .iv-grid:not(:has(.f-rep)) { grid-template-columns: 92px 140px 1fr 1fr; }
+  .iv-grid:not(:has(.f-rep)) { grid-template-columns: 92px 140px 1fr; }
+  .iv-grid .f-party { grid-column: 1 / 4; order: 5; }
+  .iv-grid .f-moreb { order: 6; }
+  .iv-egrid { grid-template-columns: minmax(160px, 1fr) 80px 96px 92px minmax(90px, .6fr) 108px; }
+  .iv-hint { display: none; }
+}
+
+/* حاوية ضيقة (موبايل / نافذة صغيرة): شبكتان وأعمدة أقل، وشريط سفلي ثابت */
+@container (max-width: 700px) {
+  .iv-grid, .iv-grid:not(:has(.f-rep)) { grid-template-columns: 1fr 1fr; }
+  .iv-grid .f-party { grid-column: 1 / -1; }
+  .iv-grid .f-moreb { grid-column: 1 / -1; }
+  .iv-more { grid-template-columns: 1fr; }
+  .iv-egrid { grid-template-columns: 1fr 1fr 1fr; }
+  .iv-egrid .f-prod, .iv-egrid .f-note, .iv-egrid .f-add { grid-column: 1 / -1; }
+  .iv-egrid .f-add label { display: none; }
+  .iv-tbl .c-idx, .iv-tbl .c-unit { display: none; }
+  .iv-tbl .c-qty { width: 54px; } .iv-tbl .c-price { width: 82px; }
+  .iv-tbl .c-tot { width: 70px; font-size: 12.5px; }
+  .iv-tbl .c-act { width: 38px; } .iv-tbl .c-act button { display: flex; margin: 0 0 3px; }
+  .iv-tbl td { padding: 4px 5px; } .iv-tbl td input { padding: 0 3px; }
+  .iv-hint { display: none; }
+  .iv-bar { position: sticky; bottom: 0; z-index: 8; padding: 8px 10px; }
+  .iv-tots { flex: 1 1 100%; }
+  .iv-t { flex: 1; min-width: 0; }
+  .iv-t.opt { display: none; }
+  .iv-acts { flex: 1 1 100%; }
+  .iv .iv-save { flex: 1; }
+  .iv .iv-menu { display: inline-flex; align-items: center; justify-content: center; }
+  .iv-acts2 { display: none; position: absolute; bottom: calc(100% + 8px); inset-inline-end: 0; flex-direction: column; gap: 4px; padding: 8px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow-lg); min-width: 160px; }
+  .iv-acts2.open { display: flex; }
+}
