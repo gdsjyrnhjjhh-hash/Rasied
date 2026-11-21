@@ -1,0 +1,8 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/css/style.css"></head><body><div id="app" style="padding:30px">صفحة تجريبية</div>
+<script>
+window.__calls=[];
+window.DB={ aiAsk:function(p){ window.__calls.push(p); return new Promise(function(r){ setTimeout(function(){
+  if(p.message.indexOf('خطأ')>-1) return r(Promise.reject(new Error('الخدمة مشغولة دلوقتي، جرّب بعد شوية.')));
+  r({text:'مبيعات الشهر **12,500 ج.م** من 8 فواتير:\n- أعلى صنف: كابل\n- <img src=x onerror=alert(1)>', sources:[{title:'مصدر تجريبي',uri:'https://example.com/a'},{title:'x',uri:'javascript:alert(1)'}]}); },300); }) } };
+</script><script src="/js/chat-widget.js"></script></body></html>
