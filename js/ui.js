@@ -1166,6 +1166,11 @@
       window.__alertsBoot = true;
       need("js/alerts.js", "Alerts").then(function () { Alerts.init(ctx); }).catch(function () {});
     }
+    // مساعد رصيد الذكي (شات عائم) — لمالك الشركة بس وعلى النسخة السحابية؛ بيتحمّل مرة واحدة ويفضل مع التنقل
+    if (!ctx.isStaff && !ctx.pending && !DB.isDemo() && !window.__cwBoot) {
+      window.__cwBoot = true;
+      need("js/chat-widget.js", "ChatWidget").catch(function () {});
+    }
     return pageEl;
   }
 

@@ -234,7 +234,7 @@
   }
 
   async function logout() {
-    try { localStorage.removeItem("trading_shell_v1"); sessionStorage.removeItem("trading_nav_scroll"); } catch (e) {}
+    try { localStorage.removeItem("trading_shell_v1"); sessionStorage.removeItem("trading_nav_scroll"); sessionStorage.removeItem("rs_chat_v1"); } catch (e) {}
     if (client) await client.auth.signOut();
     location.replace("login.html");
   }
@@ -551,7 +551,29 @@
     });
     return max + 1;
   }
+  // مساعد رصيد الذكي (Edge Function ai-assistant). بيرجّع {text, sources} أو بيرمي رسالة مفهومة.
+  async function aiAsk(payload) {
+    if (demoMode) throw new Error("المساعد بيشتغل على النسخة السحابية بس.");
+    if (!client) throw new Error(fatal || "غير متصل");
+    var res = await client.functions.invoke("ai-assistant", { body: payload });
+    if (res.error) {
+      var code = "provider";
+      try { code = (await res.error.context.json()).error || code; } catch (e) {}
+      var map = {
+        limit: "وصلت للحد اليومي للمساعد، جرّب بكرة.",
+        quota: "الخدمة مشغولة دلوقتي، جرّب بعد شوية.",
+        not_configured: "المساعد لسه مش متفعّل (مفتاح Gemini مش مضاف على Supabase).",
+        forbidden: "المساعد متاح لمالك الشركة بس.",
+        auth: "سجّل الدخول من جديد وجرّب تاني.",
+        timeout: "المساعد اتأخر في الرد، جرّب تاني.",
+        empty: "المساعد مرجّعش رد، أعد صياغة سؤالك وجرّب تاني.",
+      };
+      throw new Error(map[code] || "المساعد مش متاح دلوقتي، جرّب تاني بعد شوية.");
+    }
+    return { text: res.data.text, sources: Array.isArray(res.data.sources) ? res.data.sources : [] };
+  }
   window.DB = {
+    aiAsk: aiAsk,
     list: list,
     get: get,
     insert: insert,
